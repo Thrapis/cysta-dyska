@@ -1,0 +1,28 @@
+# Rules filled in by code from the registry list of installed programs.
+# {owner} in texts is replaced with the program or publisher name.
+version: 1
+rules:
+  - id: installed-app
+    template: true
+    category: installed-app
+    risk: review
+    explain:
+      en: "Program folder of {owner}, as registered with Windows."
+      be: "Папка праграмы {owner}, як яна зарэгістраваная ў Windows."
+    suggest:
+      - text:
+          en: "If you no longer use it, uninstall it in Settings > Apps. Do not delete the folder by hand."
+          be: "Калі вы ёй больш не карыстаецеся, выдаліце яе ў Параметры > Праграмы. Не выдаляйце папку ўручную."
+        settings: "ms-settings:appsfeatures"
+
+  - id: app-data
+    template: true
+    category: app-data
+    risk: review
+    explain:
+      en: "Data kept by {owner}: settings, caches, logs and sometimes your documents. Uninstalling the program often leaves it behind."
+      be: "Даныя {owner}: налады, кэш, журналы, а часам і вашы дакументы. Пасля выдалення праграмы яны часта застаюцца."
+    suggest:
+      - text:
+          en: "Look inside before acting. Prefer the program's own option to clear its cache."
+          be: "Спачатку зазірніце ўнутр. Лепш скарыстайцеся ўласнай функцыяй праграмы для ачысткі кэшу."

@@ -4,6 +4,8 @@ import { PickFolder } from '../wailsjs/go/main/Shell'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { CulpritsView } from '@/features/culprits/CulpritsView'
 import { SizeTree } from '@/features/scan/SizeTree'
 import { useScan, type ScanState } from '@/features/scan/useScan'
 import { locales, useI18n, type Locale } from '@/i18n'
@@ -64,7 +66,20 @@ export default function App() {
 
       <main className="min-h-0 flex-1 overflow-auto px-5 py-4">
         <Status state={state} />
-        {state.status === 'done' && <SizeTree root={state.root} scanId={state.scanId} />}
+        {state.status === 'done' && (
+          <Tabs defaultValue="culprits">
+            <TabsList>
+              <TabsTrigger value="culprits">{t('tabCulprits')}</TabsTrigger>
+              <TabsTrigger value="folders">{t('tabFolders')}</TabsTrigger>
+            </TabsList>
+            <TabsContent value="culprits" className="pt-3">
+              <CulpritsView scanId={state.scanId} />
+            </TabsContent>
+            <TabsContent value="folders" className="pt-3">
+              <SizeTree root={state.root} scanId={state.scanId} />
+            </TabsContent>
+          </Tabs>
+        )}
       </main>
 
       <footer className="flex flex-wrap items-center gap-2 border-t px-5 py-2 text-xs text-muted-foreground">

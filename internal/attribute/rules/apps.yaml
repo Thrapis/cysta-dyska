@@ -1,0 +1,123 @@
+# Browsers and common desktop apps with large caches or data.
+version: 1
+rules:
+  - id: chrome-cache
+    owner: Google Chrome
+    category: browser-cache
+    risk: safe
+    paths:
+      - "{LOCALAPPDATA}\\Google\\Chrome\\User Data\\*\\Cache"
+      - "{LOCALAPPDATA}\\Google\\Chrome\\User Data\\*\\Code Cache"
+      - "{LOCALAPPDATA}\\Google\\Chrome\\User Data\\*\\Service Worker\\CacheStorage"
+    explain: &browserCache
+      en: "Browser cache of one profile. The browser downloads pages again as needed."
+      be: "Кэш браўзера для аднаго профілю. Браўзер зноў спампуе старонкі, калі трэба."
+    suggest:
+      - text: &clearInBrowser
+          en: "Clear it in the browser's settings: Delete browsing data > Cached images and files."
+          be: "Ачысціце яго ў наладах браўзера: Выдаліць даныя аглядання > Выявы і файлы ў кэшы."
+
+  - id: edge-cache
+    owner: Microsoft Edge
+    category: browser-cache
+    risk: safe
+    paths:
+      - "{LOCALAPPDATA}\\Microsoft\\Edge\\User Data\\*\\Cache"
+      - "{LOCALAPPDATA}\\Microsoft\\Edge\\User Data\\*\\Code Cache"
+      - "{LOCALAPPDATA}\\Microsoft\\Edge\\User Data\\*\\Service Worker\\CacheStorage"
+    explain: *browserCache
+    suggest:
+      - text: *clearInBrowser
+
+  - id: brave-cache
+    owner: Brave
+    category: browser-cache
+    risk: safe
+    paths:
+      - "{LOCALAPPDATA}\\BraveSoftware\\Brave-Browser\\User Data\\*\\Cache"
+      - "{LOCALAPPDATA}\\BraveSoftware\\Brave-Browser\\User Data\\*\\Code Cache"
+      - "{LOCALAPPDATA}\\BraveSoftware\\Brave-Browser\\User Data\\*\\Service Worker\\CacheStorage"
+    explain: *browserCache
+    suggest:
+      - text: *clearInBrowser
+
+  - id: firefox-cache
+    owner: Mozilla Firefox
+    category: browser-cache
+    risk: safe
+    paths: ["{LOCALAPPDATA}\\Mozilla\\Firefox\\Profiles\\*\\cache2"]
+    explain: *browserCache
+    suggest:
+      - text:
+          en: "Clear it in Firefox: Settings > Privacy & Security > Cookies and Site Data > Clear Data > Cached Web Content."
+          be: "Ачысціце яго ў Firefox: Налады > Прыватнасць і бяспека > Кукі і даныя сайтаў > Выдаліць даныя > Кэшаваны вэб-змест."
+
+  - id: teams-cache
+    owner: Microsoft Teams
+    category: app-cache
+    risk: safe
+    paths: ["{LOCALAPPDATA}\\Packages\\MSTeams_*\\LocalCache"]
+    explain:
+      en: "Microsoft Teams cache. Teams rebuilds it."
+      be: "Кэш Microsoft Teams. Teams створыць яго зноў."
+    suggest:
+      - text: {en: "Quit Teams, then reset it in Settings > Apps > Microsoft Teams > Advanced options.", be: "Выйдзіце з Teams, потым скіньце яго ў Параметры > Праграмы > Microsoft Teams > Дадатковыя параметры."}
+        settings: "ms-settings:appsfeatures"
+
+  - id: discord-cache
+    owner: Discord
+    category: app-cache
+    risk: safe
+    paths: ["{APPDATA}\\discord\\Cache", "{APPDATA}\\discord\\Code Cache"]
+    explain:
+      en: "Discord's cache of images and media. Discord downloads them again when needed."
+      be: "Кэш выяў і медыя Discord. Discord спампуе іх зноў, калі трэба."
+    suggest:
+      - text: {en: "Quit Discord fully (also from the tray), then delete the folder.", be: "Цалкам выйдзіце з Discord (і з трэя), потым выдаліце папку."}
+
+  - id: slack-cache
+    owner: Slack
+    category: app-cache
+    risk: safe
+    paths: ["{APPDATA}\\Slack\\Cache", "{APPDATA}\\Slack\\Service Worker\\CacheStorage"]
+    explain:
+      en: "Slack's cache. Slack rebuilds it."
+      be: "Кэш Slack. Slack створыць яго зноў."
+    suggest:
+      - text: {en: "In Slack: Help > Troubleshooting > Clear Cache and Restart.", be: "У Slack: Help > Troubleshooting > Clear Cache and Restart."}
+
+  - id: spotify-cache
+    owner: Spotify
+    category: app-cache
+    risk: safe
+    paths: ["{LOCALAPPDATA}\\Spotify\\Storage", "{LOCALAPPDATA}\\Spotify\\Data"]
+    explain:
+      en: "Spotify's cache of streamed and downloaded music."
+      be: "Кэш Spotify з праслуханай і спампаванай музыкай."
+    suggest:
+      - text: {en: "In Spotify: Settings > Storage > Clear cache. Offline downloads are listed separately there.", be: "У Spotify: Налады > Сховішча > Ачысціць кэш. Спампоўкі для афлайну паказаны там асобна."}
+
+  - id: nvidia-caches
+    owner: NVIDIA
+    category: app-cache
+    risk: safe
+    paths:
+      - "{LOCALAPPDATA}\\NVIDIA\\DXCache"
+      - "{LOCALAPPDATA}\\NVIDIA\\GLCache"
+      - "{PROGRAMDATA}\\NVIDIA Corporation\\Downloader"
+    explain:
+      en: "NVIDIA shader caches and downloaded driver installers."
+      be: "Кэш шэйдараў NVIDIA і спампаваныя ўсталёўшчыкі драйвераў."
+    suggest:
+      - text: {en: "Shader caches are rebuilt by games; old driver installers in Downloader are no longer needed.", be: "Кэш шэйдараў гульні створаць зноў; старыя ўсталёўшчыкі драйвераў у Downloader больш не патрэбныя."}
+
+  - id: steam-library
+    owner: Steam
+    category: installed-app
+    risk: review
+    paths: ["{PROGRAMFILESX86}\\Steam\\steamapps"]
+    explain:
+      en: "Games installed through Steam."
+      be: "Гульні, усталяваныя праз Steam."
+    suggest:
+      - text: {en: "Uninstall games you don't play, or move them to another drive in Steam > Settings > Storage.", be: "Выдаліце гульні, у якія не гуляеце, або перанясіце іх на іншы дыск у Steam > Налады > Сховішча."}

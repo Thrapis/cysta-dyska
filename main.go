@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"embed"
+	"os/exec"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -30,6 +31,32 @@ type Shell struct{ ctx context.Context }
 // PickFolder opens a native folder picker. Returns "" if the user cancels.
 func (s *Shell) PickFolder() (string, error) {
 	return runtime.OpenDirectoryDialog(s.ctx, runtime.OpenDialogOptions{})
+}
+
+// Reveal shows path selected in File Explorer.
+func (s *Shell) Reveal(path string) error {
+	cmd, err := app.RevealCommand(path)
+	if err != nil {
+		return err
+	}
+	return start(cmd)
+}
+
+// OpenSettings opens a Windows Settings page (ms-settings: URIs only).
+func (s *Shell) OpenSettings(uri string) error {
+	cmd, err := app.SettingsCommand(uri)
+	if err != nil {
+		return err
+	}
+	return start(cmd)
+}
+
+// start launches cmd without waiting for it.
+func start(cmd *exec.Cmd) error {
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	return cmd.Process.Release()
 }
 
 func main() {

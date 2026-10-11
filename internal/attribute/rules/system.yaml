@@ -1,0 +1,183 @@
+# Windows itself: system files, update leftovers, temp files, user folders.
+version: 1
+rules:
+  - id: hiberfil
+    owner: Windows
+    category: system
+    risk: system
+    paths: ["{SYSTEMDRIVE}\\hiberfil.sys"]
+    explain:
+      en: "Hibernation file. Windows keeps a share of your RAM here for hibernate and Fast Startup."
+      be: "Файл гібернацыі. Windows захоўвае тут частку аператыўнай памяці для гібернацыі і хуткага запуску."
+    suggest:
+      - text: {en: "If you never hibernate, turn it off in an administrator terminal. This also disables Fast Startup.", be: "Калі вы не карыстаецеся гібернацыяй, адключыце яе ў тэрмінале адміністратара. Гэта таксама адключыць хуткі запуск."}
+        command: "powercfg /hibernate off"
+
+  - id: pagefile
+    owner: Windows
+    category: system
+    risk: never
+    paths: ["{SYSTEMDRIVE}\\pagefile.sys", "{SYSTEMDRIVE}\\swapfile.sys"]
+    explain:
+      en: "Virtual memory used when RAM runs out. Windows manages its size; never delete it."
+      be: "Віртуальная памяць, калі не хапае аператыўнай. Windows сама кіруе яе памерам; ніколі не выдаляйце яе."
+    suggest:
+      - text: {en: "Its size can be changed in System > About > Advanced system settings > Performance > Virtual memory.", be: "Памер можна змяніць у Сістэма > Звесткі > Дадатковыя параметры сістэмы > Хуткадзеянне > Віртуальная памяць."}
+
+  - id: windows-old
+    owner: Windows
+    category: system
+    risk: system
+    paths: ["{SYSTEMDRIVE}\\Windows.old"]
+    explain:
+      en: "Your previous Windows installation, kept so you can go back after an upgrade. Windows removes it after about 10 days."
+      be: "Папярэдняя ўсталёўка Windows, каб можна было вярнуцца пасля абнаўлення. Windows выдаляе яе праз каля 10 дзён."
+    suggest:
+      - text: {en: "Remove it with Storage Sense > Temporary files > Previous Windows installation(s).", be: "Выдаліце яе праз Кантроль памяці > Часовыя файлы > Папярэднія ўсталёўкі Windows."}
+        settings: "ms-settings:storagesense"
+
+  - id: winsxs
+    owner: Windows
+    category: system
+    risk: never
+    paths: ["{SYSTEMROOT}\\WinSxS"]
+    explain:
+      en: "The Windows component store. Most of it is shared with the Windows folder through hardlinks, which this scan counts only once."
+      be: "Сховішча кампанентаў Windows. Большая частка падзяляецца з папкай Windows праз жорсткія спасылкі, а гэтае сканаванне лічыць іх адзін раз."
+    suggest:
+      - text: {en: "Never delete files here. Windows can clean superseded components itself (administrator terminal):", be: "Ніколі не выдаляйце тут файлы. Windows можа сама прыбраць састарэлыя кампаненты (тэрмінал адміністратара):"}
+        command: "Dism.exe /Online /Cleanup-Image /StartComponentCleanup"
+
+  - id: windows-update-download
+    owner: Windows Update
+    category: system
+    risk: system
+    paths: ["{SYSTEMROOT}\\SoftwareDistribution\\Download"]
+    explain:
+      en: "Update files Windows Update downloaded. Usually cleaned automatically after installation."
+      be: "Файлы абнаўленняў, спампаваныя Windows Update. Звычайна прыбіраюцца пасля ўсталёўкі."
+    suggest:
+      - text: {en: "Clean with Storage Sense > Temporary files > Windows Update Cleanup.", be: "Ачысціце праз Кантроль памяці > Часовыя файлы > Ачыстка абнаўленняў Windows."}
+        settings: "ms-settings:storagesense"
+
+  - id: delivery-optimization
+    owner: Windows Update
+    category: system
+    risk: system
+    paths: ["{SYSTEMROOT}\\ServiceProfiles\\NetworkService\\AppData\\Local\\Microsoft\\Windows\\DeliveryOptimization"]
+    explain:
+      en: "Delivery Optimization cache: update pieces shared with other PCs."
+      be: "Кэш аптымізацыі дастаўкі: часткі абнаўленняў, якімі ПК абменьваецца з іншымі."
+    suggest:
+      - text: {en: "Clean with Storage Sense > Temporary files > Delivery Optimization Files.", be: "Ачысціце праз Кантроль памяці > Часовыя файлы > Файлы аптымізацыі дастаўкі."}
+        settings: "ms-settings:storagesense"
+
+  - id: windows-installer-cache
+    owner: Windows Installer
+    category: system
+    risk: never
+    paths: ["{SYSTEMROOT}\\Installer"]
+    explain:
+      en: "Installer copies needed to repair, update and uninstall programs. Deleting files here breaks uninstallers."
+      be: "Копіі ўсталёўшчыкаў, патрэбныя для аднаўлення, абнаўлення і выдалення праграм. Выдаленне файлаў тут ламае выдаленне праграм."
+    suggest:
+      - text: {en: "Leave it. Uninstalling programs you don't need is the safe way to shrink it.", be: "Не чапайце. Бяспечны спосаб паменшыць яе — выдаліць непатрэбныя праграмы."}
+        settings: "ms-settings:appsfeatures"
+
+  - id: package-cache
+    owner: Windows Installer
+    category: system
+    risk: never
+    paths: ["{PROGRAMDATA}\\Package Cache"]
+    explain:
+      en: "Installer cache of Visual Studio, .NET and other programs, needed to repair or uninstall them."
+      be: "Кэш усталёўшчыкаў Visual Studio, .NET і іншых праграм, патрэбны для іх аднаўлення ці выдалення."
+    suggest:
+      - text: {en: "Leave it. Uninstall programs you don't need instead.", be: "Не чапайце. Замест гэтага выдаліце непатрэбныя праграмы."}
+        settings: "ms-settings:appsfeatures"
+
+  - id: system-volume-information
+    owner: Windows
+    category: system
+    risk: system
+    paths: ["{SYSTEMDRIVE}\\System Volume Information"]
+    explain:
+      en: "Restore points and shadow copies. Its size can only be read with administrator rights, so it may show as unknown."
+      be: "Пункты аднаўлення і ценявыя копіі. Яе памер можна прачытаць толькі з правамі адміністратара, таму ён можа быць невядомы."
+    suggest:
+      - text: {en: "See how much restore points use (administrator terminal). Limit or delete them in System Protection.", be: "Паглядзіце, колькі займаюць пункты аднаўлення (тэрмінал адміністратара). Абмяжуйце або выдаліце іх у Абароне сістэмы."}
+        command: "vssadmin list shadowstorage"
+
+  - id: windows-apps
+    owner: Microsoft Store
+    category: installed-app
+    risk: system
+    paths: ["{PROGRAMFILES}\\WindowsApps"]
+    explain:
+      en: "Programs installed from the Microsoft Store. Windows protects this folder."
+      be: "Праграмы, усталяваныя з Microsoft Store. Windows абараняе гэтую папку."
+    suggest:
+      - text: {en: "Uninstall apps you don't use in Settings > Apps.", be: "Выдаліце непатрэбныя праграмы ў Параметры > Праграмы."}
+        settings: "ms-settings:appsfeatures"
+
+  - id: store-app-data
+    owner: Microsoft Store apps
+    category: app-data
+    risk: review
+    paths: ["{LOCALAPPDATA}\\Packages"]
+    explain:
+      en: "Data of Microsoft Store apps, one folder per app."
+      be: "Даныя праграм з Microsoft Store, па адной папцы на праграму."
+    suggest:
+      - text: {en: "Reset or uninstall a large app in Settings > Apps instead of deleting its folder.", be: "Скіньце або выдаліце вялікую праграму ў Параметры > Праграмы замест выдалення яе папкі."}
+        settings: "ms-settings:appsfeatures"
+
+  - id: recycle-bin
+    owner: Recycle Bin
+    category: user-files
+    risk: review
+    paths: ["{SYSTEMDRIVE}\\$Recycle.Bin"]
+    explain:
+      en: "Files you deleted, waiting in the Recycle Bin."
+      be: "Выдаленыя вамі файлы, што чакаюць у Сметніцы."
+    suggest:
+      - text: {en: "Empty the Recycle Bin when you are sure you don't need them.", be: "Ачысціце Сметніцу, калі ўпэўненыя, што яны не патрэбныя."}
+
+  - id: temp-user
+    owner: Windows
+    category: temp
+    risk: safe
+    paths: ["{TEMP}", "{SYSTEMROOT}\\Temp"]
+    explain:
+      en: "Temporary files left by programs and installers."
+      be: "Часовыя файлы, пакінутыя праграмамі і ўсталёўшчыкамі."
+    suggest:
+      - text: {en: "Clean with Storage Sense > Temporary files. Files still in use are skipped, which is fine.", be: "Ачысціце праз Кантроль памяці > Часовыя файлы. Файлы, якія яшчэ выкарыстоўваюцца, будуць прапушчаныя — гэта нармальна."}
+        settings: "ms-settings:storagesense"
+
+  - id: crash-dumps
+    owner: Windows Error Reporting
+    category: temp
+    risk: safe
+    paths:
+      - "{LOCALAPPDATA}\\CrashDumps"
+      - "{SYSTEMROOT}\\MEMORY.DMP"
+      - "{SYSTEMROOT}\\Minidump"
+      - "{PROGRAMDATA}\\Microsoft\\Windows\\WER"
+    explain:
+      en: "Crash dumps and error reports. Useful only for diagnosing a crash."
+      be: "Дампы збояў і справаздачы пра памылкі. Карысныя толькі для аналізу збою."
+    suggest:
+      - text: {en: "Clean with Storage Sense > Temporary files (error reports and dumps).", be: "Ачысціце праз Кантроль памяці > Часовыя файлы (справаздачы і дампы)."}
+        settings: "ms-settings:storagesense"
+
+  - id: downloads
+    owner: You
+    category: user-files
+    risk: review
+    paths: ["{USERPROFILE}\\Downloads"]
+    explain:
+      en: "Your Downloads folder. Old installers, archives and videos often pile up here."
+      be: "Ваша папка Спампоўкі. Тут часта назапашваюцца старыя ўсталёўшчыкі, архівы і відэа."
+    suggest:
+      - text: {en: "Sort by size in this app's folder view and remove what you no longer need.", be: "Адсартуйце па памеры ў праглядзе папак гэтай праграмы і выдаліце непатрэбнае."}

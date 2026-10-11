@@ -10,6 +10,10 @@ export function Children(arg1) {
   return window['go']['app']['App']['Children'](arg1);
 }
 
+export function Culprits() {
+  return window['go']['app']['App']['Culprits']();
+}
+
 export function StartScan(arg1) {
   return window['go']['app']['App']['StartScan'](arg1);
 }

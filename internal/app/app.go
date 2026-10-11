@@ -5,10 +5,12 @@ package app
 import (
 	"context"
 	"errors"
+	"os"
 	"sync"
 	"time"
 
 	"cysta-dyska/internal/scan"
+	"cysta-dyska/internal/sources/registry"
 )
 
 // Event names sent to the frontend.
@@ -58,14 +60,19 @@ type ProgressDTO struct {
 type App struct {
 	emit Emitter
 
-	mu     sync.Mutex
-	cancel context.CancelFunc // non-nil while a scan is running
-	tree   *scan.Node         // last completed scan
+	// Sources for attribution; replaced in tests.
+	getenv        func(string) string
+	installedApps func() ([]registry.App, error)
+
+	mu       sync.Mutex
+	cancel   context.CancelFunc // non-nil while a scan is running
+	tree     *scan.Node         // last completed scan
+	culprits *CulpritsDTO       // attribution of tree
 }
 
 // New returns an App that reports events through emit.
 func New(emit Emitter) *App {
-	return &App{emit: emit}
+	return &App{emit: emit, getenv: os.Getenv, installedApps: registry.Installed}
 }
 
 // StartScan begins scanning root in the background. Results arrive as
@@ -94,10 +101,16 @@ func (a *App) run(ctx context.Context, root string) {
 		})
 	}})
 
+	var culprits CulpritsDTO
+	if err == nil {
+		culprits = a.attribute(tree) // ~0.2 s for a full drive
+	}
+
 	a.mu.Lock()
 	a.cancel = nil
 	if err == nil {
 		a.tree = tree
+		a.culprits = &culprits
 	}
 	a.mu.Unlock()
 

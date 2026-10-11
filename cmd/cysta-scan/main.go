@@ -12,15 +12,19 @@ import (
 	"runtime"
 	"time"
 
+	"cysta-dyska/internal/attribute"
 	"cysta-dyska/internal/scan"
+	"cysta-dyska/internal/sources/locations"
+	"cysta-dyska/internal/sources/registry"
 )
 
 func main() {
 	top := flag.Int("top", 20, "number of largest entries to print")
 	workers := flag.Int("workers", 0, "directories read in parallel (0 = default)")
 	quiet := flag.Bool("q", false, "no live progress on stderr")
+	culprits := flag.Bool("culprits", false, "explain what uses the space (rule pack + installed apps)")
 	flag.Usage = func() {
-		fmt.Fprintln(os.Stderr, "usage: cysta-scan [-top N] [-workers N] [-q] <folder>")
+		fmt.Fprintln(os.Stderr, "usage: cysta-scan [-top N] [-workers N] [-q] [-culprits] <folder>")
 		flag.PrintDefaults()
 	}
 	flag.Parse()
@@ -75,6 +79,42 @@ func main() {
 			kind = "/"
 		}
 		fmt.Printf("%10s  %10s  %s%s\n", human(c.Alloc), human(c.Size), c.Name, kind)
+	}
+
+	if *culprits {
+		printCulprits(tree, *top)
+	}
+}
+
+func printCulprits(tree *scan.Node, top int) {
+	start := time.Now()
+	pack, err := attribute.LoadEmbedded()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "rules:", err)
+		os.Exit(1)
+	}
+	apps, err := registry.Installed()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "registry:", err)
+	}
+	found := attribute.Match(tree, pack, locations.Resolve(os.Getenv), apps)
+
+	var total int64
+	for _, f := range found {
+		total += f.Alloc
+	}
+	fmt.Printf("\nculprits: %d findings, %s explained (%.0f%% of scan) from %d apps in %s\n\n",
+		len(found), human(total), 100*float64(total)/float64(max(tree.Alloc, 1)), len(apps),
+		time.Since(start).Round(time.Millisecond))
+	for i, f := range found {
+		if i == top {
+			break
+		}
+		size := human(f.Alloc)
+		if f.Unreadable() {
+			size = "unknown"
+		}
+		fmt.Printf("%10s  %-6s  %-14s %-22s %s\n", size, f.Rule.Risk, f.Rule.Category, f.Owner, f.Node.Path())
 	}
 }
 

@@ -6,4 +6,6 @@ export function CancelScan():Promise<void>;
 
 export function Children(arg1:string):Promise<Array<app.NodeDTO>>;
 
+export function Culprits():Promise<app.CulpritsDTO>;
+
 export function StartScan(arg1:string):Promise<void>;
