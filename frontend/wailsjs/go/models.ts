@@ -5,9 +5,12 @@ export namespace app {
 	    path: string;
 	    isDir: boolean;
 	    size: number;
+	    alloc: number;
 	    files: number;
 	    dirs: number;
 	    err?: string;
+	    link: boolean;
+	    hardlink: boolean;
 	    hasChildren: boolean;
 	    isRest: boolean;
 	
@@ -21,9 +24,12 @@ export namespace app {
 	        this.path = source["path"];
 	        this.isDir = source["isDir"];
 	        this.size = source["size"];
+	        this.alloc = source["alloc"];
 	        this.files = source["files"];
 	        this.dirs = source["dirs"];
 	        this.err = source["err"];
+	        this.link = source["link"];
+	        this.hardlink = source["hardlink"];
 	        this.hasChildren = source["hasChildren"];
 	        this.isRest = source["isRest"];
 	    }

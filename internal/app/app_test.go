@@ -46,7 +46,7 @@ func (f *fakeEmitter) wait(t *testing.T) {
 func fixture(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
-	for name, n := range map[string]int{"a/1.bin": 300, "a/2.bin": 200, "b/3.bin": 100} {
+	for name, n := range map[string]int{"a/1.bin": 30_000, "a/2.bin": 20_000, "b/3.bin": 10_000} {
 		p := filepath.Join(root, filepath.FromSlash(name))
 		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
 			t.Fatal(err)
@@ -75,7 +75,7 @@ func TestScanThenBrowseChildren(t *testing.T) {
 		t.Fatalf("last event = %s (%v), want %s", name, data, EventDone)
 	}
 	sum := data.(NodeDTO)
-	if sum.Size != 600 || sum.Files != 3 {
+	if sum.Size != 60_000 || sum.Files != 3 || sum.Alloc < sum.Size {
 		t.Errorf("root summary = %+v", sum)
 	}
 
@@ -83,7 +83,7 @@ func TestScanThenBrowseChildren(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(kids) != 2 || kids[0].Name != "a" || kids[0].Size != 500 || !kids[0].HasChildren {
+	if len(kids) != 2 || kids[0].Name != "a" || kids[0].Size != 50_000 || !kids[0].HasChildren {
 		t.Errorf("children(root) = %+v", kids)
 	}
 

@@ -23,9 +23,6 @@ const (
 // remainder is folded into a single summary row.
 const maxChildren = 500
 
-// progressInterval throttles progress events so the UI is not flooded.
-const progressInterval = 100 * time.Millisecond
-
 // Emitter sends an event to the frontend.
 type Emitter interface {
 	Emit(name string, data any)
@@ -36,10 +33,13 @@ type NodeDTO struct {
 	Name        string `json:"name"`
 	Path        string `json:"path"`
 	IsDir       bool   `json:"isDir"`
-	Size        int64  `json:"size"`
+	Size        int64  `json:"size"`  // logical bytes
+	Alloc       int64  `json:"alloc"` // bytes used on disk
 	Files       int64  `json:"files"`
 	Dirs        int64  `json:"dirs"`
 	Err         string `json:"err,omitempty"`
+	Link        bool   `json:"link"`     // junction/symlink, not followed
+	Hardlink    bool   `json:"hardlink"` // disk space counted at another path
 	HasChildren bool   `json:"hasChildren"`
 	IsRest      bool   `json:"isRest"` // summary row for entries beyond maxChildren
 }
@@ -86,17 +86,13 @@ func (a *App) StartScan(root string) error {
 
 func (a *App) run(ctx context.Context, root string) {
 	start := time.Now()
-	var lastEmit time.Time
-	tree, err := scan.Scan(ctx, root, func(p scan.Progress) {
-		if time.Since(lastEmit) < progressInterval {
-			return
-		}
-		lastEmit = time.Now()
+	// The scanner already paces progress reports (about 10 per second).
+	tree, err := scan.Scan(ctx, root, scan.Options{OnProgress: func(p scan.Progress) {
 		a.emit.Emit(EventProgress, ProgressDTO{
 			Files: p.Files, Dirs: p.Dirs, Bytes: p.Bytes, Errors: p.Errors,
 			Path: p.Path, Elapsed: time.Since(start).Milliseconds(),
 		})
-	})
+	}})
 
 	a.mu.Lock()
 	a.cancel = nil
@@ -141,9 +137,10 @@ func (a *App) Children(path string) ([]NodeDTO, error) {
 	out := make([]NodeDTO, 0, min(len(n.Children), maxChildren+1))
 	for i, c := range n.Children {
 		if i == maxChildren {
-			rest := NodeDTO{Name: "", Path: n.Path, IsRest: true}
+			rest := NodeDTO{Name: "", Path: n.Path(), IsRest: true}
 			for _, r := range n.Children[i:] {
 				rest.Size += r.Size
+				rest.Alloc += r.Alloc
 				rest.Files += r.Files
 				rest.Dirs += r.Dirs
 				if r.IsDir {
@@ -160,8 +157,9 @@ func (a *App) Children(path string) ([]NodeDTO, error) {
 
 func toDTO(n *scan.Node) NodeDTO {
 	return NodeDTO{
-		Name: n.Name, Path: n.Path, IsDir: n.IsDir,
-		Size: n.Size, Files: n.Files, Dirs: n.Dirs, Err: n.Err,
+		Name: n.Name, Path: n.Path(), IsDir: n.IsDir,
+		Size: n.Size, Alloc: n.Alloc, Files: n.Files, Dirs: n.Dirs, Err: n.Err,
+		Link: n.Link, Hardlink: n.Hardlink,
 		HasChildren: len(n.Children) > 0,
 	}
 }

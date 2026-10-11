@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"runtime"
 	"time"
 
 	"cysta-dyska/internal/scan"
@@ -16,8 +17,10 @@ import (
 
 func main() {
 	top := flag.Int("top", 20, "number of largest entries to print")
+	workers := flag.Int("workers", 0, "directories read in parallel (0 = default)")
+	quiet := flag.Bool("q", false, "no live progress on stderr")
 	flag.Usage = func() {
-		fmt.Fprintln(os.Stderr, "usage: cysta-scan [-top N] <folder>")
+		fmt.Fprintln(os.Stderr, "usage: cysta-scan [-top N] [-workers N] [-q] <folder>")
 		flag.PrintDefaults()
 	}
 	flag.Parse()
@@ -29,30 +32,49 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 
+	w := *workers
+	if w <= 0 {
+		w = scan.DefaultWorkers()
+	}
 	start := time.Now()
 	var last scan.Progress
-	tree, err := scan.Scan(ctx, flag.Arg(0), func(p scan.Progress) {
-		last = p
-		fmt.Fprintf(os.Stderr, "\r%d files, %s", p.Files, human(p.Bytes))
+	tree, err := scan.Scan(ctx, flag.Arg(0), scan.Options{
+		Workers: w,
+		OnProgress: func(p scan.Progress) {
+			last = p
+			if !*quiet {
+				fmt.Fprintf(os.Stderr, "\r%d files, %s", p.Files, human(p.Bytes))
+			}
+		},
 	})
-	fmt.Fprintln(os.Stderr)
+	elapsed := time.Since(start)
+	if !*quiet {
+		fmt.Fprintln(os.Stderr)
+	}
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "error:", err)
 		os.Exit(1)
 	}
 
-	fmt.Printf("%s  %s  (%d files, %d dirs, %d unreadable) in %s\n\n",
-		tree.Path, human(tree.Size), tree.Files, tree.Dirs, last.Errors,
-		time.Since(start).Round(time.Millisecond))
+	runtime.GC()
+	var ms runtime.MemStats
+	runtime.ReadMemStats(&ms)
+
+	fmt.Printf("%s\n  on disk %s, logical %s\n  %d files, %d dirs, %d unreadable\n  %s with %d workers, heap %s\n\n",
+		tree.Path(), human(tree.Alloc), human(tree.Size), tree.Files, tree.Dirs, last.Errors,
+		elapsed.Round(time.Millisecond), w, human(int64(ms.HeapAlloc)))
 	for i, c := range tree.Children {
 		if i == *top {
 			break
 		}
 		kind := " "
-		if c.IsDir {
+		switch {
+		case c.Link:
+			kind = " -> (link, not followed)"
+		case c.IsDir:
 			kind = "/"
 		}
-		fmt.Printf("%10s  %s%s\n", human(c.Size), c.Name, kind)
+		fmt.Printf("%10s  %10s  %s%s\n", human(c.Alloc), human(c.Size), c.Name, kind)
 	}
 }
 

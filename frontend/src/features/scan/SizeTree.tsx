@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { AlertTriangle, ArrowDown, ArrowUp, ChevronRight, File, Folder } from 'lucide-react'
+import { AlertTriangle, ArrowDown, ArrowUp, ChevronRight, File, Folder, Link2 } from 'lucide-react'
 import { Children } from '../../../wailsjs/go/app/App'
 import type { app } from '../../../wailsjs/go/models'
+import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useI18n, type MessageKey } from '@/i18n'
 import { formatBytes } from '@/lib/format'
@@ -18,7 +19,11 @@ function sortNodes(nodes: app.NodeDTO[], sort: Sort): app.NodeDTO[] {
   const items = nodes.filter((n) => !n.isRest)
   items.sort((a, b) => {
     const d =
-      sort.key === 'name' ? collator.compare(a.name, b.name) : sort.key === 'files' ? a.files - b.files : a.size - b.size
+      sort.key === 'name'
+        ? collator.compare(a.name, b.name)
+        : sort.key === 'files'
+          ? a.files - b.files
+          : a.alloc - b.alloc || a.size - b.size
     return sort.desc ? -d : d
   })
   return [...items, ...rest]
@@ -111,11 +116,11 @@ function Level({ parent, depth, sort }: { parent: app.NodeDTO; depth: number; so
 function Row({ node, parent, depth, sort }: { node: app.NodeDTO; parent: app.NodeDTO; depth: number; sort: Sort }) {
   const { t, locale, formatNumber } = useI18n()
   const [open, setOpen] = useState(false)
-  const share = parent.size > 0 ? node.size / parent.size : 0
-  const expandable = node.isDir && node.hasChildren
+  const share = parent.alloc > 0 ? node.alloc / parent.alloc : 0
+  const expandable = node.isDir && node.hasChildren && !node.link
 
   const label = node.isRest ? t('moreItems', { count: formatNumber(node.files + node.dirs) }) : node.name
-  const Icon = node.isDir ? Folder : File
+  const Icon = node.link ? Link2 : node.isDir ? Folder : File
 
   return (
     <>
@@ -139,6 +144,16 @@ function Row({ node, parent, depth, sort }: { node: app.NodeDTO; parent: app.Nod
             <span className="truncate" title={node.isRest ? undefined : node.path}>
               {label}
             </span>
+            {node.link && (
+              <Badge variant="outline" title={t('linkTitle')}>
+                {t('link')}
+              </Badge>
+            )}
+            {node.hardlink && (
+              <Badge variant="outline" title={t('hardlinkTitle')}>
+                {t('hardlink')}
+              </Badge>
+            )}
             {node.err && (
               <span title={`${t('accessDenied')}: ${node.err}`}>
                 <AlertTriangle className="size-4 shrink-0 text-amber-500" />
@@ -151,7 +166,12 @@ function Row({ node, parent, depth, sort }: { node: app.NodeDTO; parent: app.Nod
             <div className="h-full rounded bg-primary/70" style={{ width: `${(share * 100).toFixed(1)}%` }} />
           </div>
         </TableCell>
-        <TableCell className="text-right tabular-nums">{formatBytes(node.size, locale)}</TableCell>
+        <TableCell
+          className="text-right tabular-nums"
+          title={t('logicalSize', { size: formatBytes(node.size, locale) })}
+        >
+          {formatBytes(node.alloc, locale)}
+        </TableCell>
         <TableCell className="text-right tabular-nums text-muted-foreground">{formatNumber(node.files)}</TableCell>
       </TableRow>
       {open && <Level parent={node} depth={depth + 1} sort={sort} />}

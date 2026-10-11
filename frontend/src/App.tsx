@@ -71,7 +71,7 @@ export default function App() {
         <Badge variant="secondary">
           <ShieldCheck /> {t('readOnlyNote')}
         </Badge>
-        <span>{t('logicalSizeNote')}</span>
+        <span>{t('sizeNote')}</span>
       </footer>
     </div>
   )
@@ -113,7 +113,7 @@ function Status({ state }: { state: ScanState }) {
       return (
         <p className="mb-3 text-sm text-muted-foreground">
           {t('scanDone', {
-            size: formatBytes(state.root.size, locale),
+            size: formatBytes(state.root.alloc, locale),
             files: formatNumber(state.root.files),
             dirs: formatNumber(state.root.dirs),
           })}
