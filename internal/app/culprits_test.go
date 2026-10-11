@@ -13,7 +13,7 @@ import (
 // into root, so attribution does not depend on the machine running tests.
 func newTestApp(root string, apps []registry.App) (*App, *fakeEmitter) {
 	em := newFakeEmitter()
-	a := New(em)
+	a := New(em, nil)
 	env := map[string]string{
 		"USERPROFILE":  filepath.Join(root, "home"),
 		"LOCALAPPDATA": filepath.Join(root, "home", "AppData", "Local"),

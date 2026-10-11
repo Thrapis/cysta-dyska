@@ -78,4 +78,28 @@ export const be: Messages = {
   cat_system: 'Windows',
   cat_temp: 'Часовыя файлы',
   cat_user_files: 'Вашы файлы',
+
+  tabMap: 'Мапа',
+  tabHistory: 'Гісторыя',
+
+  mapHint: 'Націсніце на папку, каб адкрыць яе.',
+  mapUp: 'Вышэй',
+  mapOther: 'Яшчэ {count} меншых элементаў',
+  mapEmpty: 'Гэтая папка не займае месца на дыску.',
+
+  compareWith: 'Параўнаць з',
+  historyFirst: 'Гэта першае сканаванне гэтай папкі. Прасканіруйце яе пазней, каб убачыць змены.',
+  historyUnavailable: 'Гісторыя недаступная: {warning}',
+  historyGrew: 'Занята на {delta} больш, чым {date}.',
+  historyShrank: 'Занята на {delta} менш, чым {date}.',
+  historySame: 'Прыкладна столькі ж, колькі {date}.',
+  hotspots: 'Дзе змянілася',
+  hotspotsHint: 'Месцы, дзе занятае месца змянілася на {size} ці больш, без усіх папак вышэй.',
+  hotspotsNone: 'Няма змен на {size} ці больш.',
+  allChanges: 'Усе змены па папках',
+  before: 'Раней',
+  now: 'Зараз',
+  change: 'Змена',
+  belowThreshold: '< {size}',
+  historyNote: 'Кожнае сканаванне захоўваецца на гэтым камп’ютары. Папкі меншыя за {size} не адсочваюцца.',
 }

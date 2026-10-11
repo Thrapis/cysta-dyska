@@ -75,6 +75,30 @@ export const en = {
   cat_system: 'Windows',
   cat_temp: 'Temporary files',
   cat_user_files: 'Your files',
+
+  tabMap: 'Map',
+  tabHistory: 'History',
+
+  mapHint: 'Click a folder to open it.',
+  mapUp: 'Up',
+  mapOther: '{count} smaller items',
+  mapEmpty: 'This folder uses no disk space.',
+
+  compareWith: 'Compare with',
+  historyFirst: 'This is the first scan of this folder. Scan it again later to see what changed.',
+  historyUnavailable: 'History is unavailable: {warning}',
+  historyGrew: '{delta} more used than on {date}.',
+  historyShrank: '{delta} less used than on {date}.',
+  historySame: 'About the same as on {date}.',
+  hotspots: 'Where it changed',
+  hotspotsHint: 'The places where space changed by {size} or more, not every folder above them.',
+  hotspotsNone: 'No change of {size} or more.',
+  allChanges: 'All changes by folder',
+  before: 'Before',
+  now: 'Now',
+  change: 'Change',
+  belowThreshold: '< {size}',
+  historyNote: 'Each scan is saved on this computer. Folders under {size} are not tracked.',
 } as const
 
 export type Messages = { [K in keyof typeof en]: string }

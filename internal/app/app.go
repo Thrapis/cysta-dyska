@@ -11,6 +11,7 @@ import (
 
 	"cysta-dyska/internal/scan"
 	"cysta-dyska/internal/sources/registry"
+	"cysta-dyska/internal/store"
 )
 
 // Event names sent to the frontend.
@@ -64,15 +65,25 @@ type App struct {
 	getenv        func(string) string
 	installedApps func() ([]registry.App, error)
 
-	mu       sync.Mutex
-	cancel   context.CancelFunc // non-nil while a scan is running
-	tree     *scan.Node         // last completed scan
-	culprits *CulpritsDTO       // attribution of tree
+	history         *store.Store // nil when the history database could not be opened
+	historyOpts     store.Options
+	hotspotMinDelta int64
+
+	mu             sync.Mutex
+	cancel         context.CancelFunc // non-nil while a scan is running
+	tree           *scan.Node         // last completed scan
+	culprits       *CulpritsDTO       // attribution of tree
+	snapshotID     int64              // history id of tree; 0 if not saved
+	historyWarning string
 }
 
-// New returns an App that reports events through emit.
-func New(emit Emitter) *App {
-	return &App{emit: emit, getenv: os.Getenv, installedApps: registry.Installed}
+// New returns an App that reports events through emit and saves finished
+// scans to history, which may be nil.
+func New(emit Emitter, history *store.Store) *App {
+	return &App{
+		emit: emit, getenv: os.Getenv, installedApps: registry.Installed,
+		history: history, historyOpts: store.DefaultOptions, hotspotMinDelta: defaultHotspotMinDelta,
+	}
 }
 
 // StartScan begins scanning root in the background. Results arrive as
@@ -101,9 +112,13 @@ func (a *App) run(ctx context.Context, root string) {
 		})
 	}})
 
+	took := time.Since(start)
 	var culprits CulpritsDTO
+	var snapshotID int64
+	var historyWarning string
 	if err == nil {
-		culprits = a.attribute(tree) // ~0.2 s for a full drive
+		culprits = a.attribute(tree)                           // ~0.2 s for a full drive
+		snapshotID, historyWarning = a.saveHistory(tree, took) // ~10k rows for a full drive
 	}
 
 	a.mu.Lock()
@@ -111,6 +126,7 @@ func (a *App) run(ctx context.Context, root string) {
 	if err == nil {
 		a.tree = tree
 		a.culprits = &culprits
+		a.snapshotID, a.historyWarning = snapshotID, historyWarning
 	}
 	a.mu.Unlock()
 

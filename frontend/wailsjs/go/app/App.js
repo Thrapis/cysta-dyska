@@ -10,10 +10,26 @@ export function Children(arg1) {
   return window['go']['app']['App']['Children'](arg1);
 }
 
+export function CompareChildren(arg1, arg2, arg3) {
+  return window['go']['app']['App']['CompareChildren'](arg1, arg2, arg3);
+}
+
 export function Culprits() {
   return window['go']['app']['App']['Culprits']();
 }
 
+export function History() {
+  return window['go']['app']['App']['History']();
+}
+
+export function Hotspots(arg1, arg2) {
+  return window['go']['app']['App']['Hotspots'](arg1, arg2);
+}
+
 export function StartScan(arg1) {
   return window['go']['app']['App']['StartScan'](arg1);
+}
+
+export function Treemap(arg1, arg2, arg3) {
+  return window['go']['app']['App']['Treemap'](arg1, arg2, arg3);
 }

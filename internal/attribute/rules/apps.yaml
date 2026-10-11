@@ -121,3 +121,14 @@ rules:
       be: "Гульні, усталяваныя праз Steam."
     suggest:
       - text: {en: "Uninstall games you don't play, or move them to another drive in Steam > Settings > Storage.", be: "Выдаліце гульні, у якія не гуляеце, або перанясіце іх на іншы дыск у Steam > Налады > Сховішча."}
+
+  - id: cysta-dyska-history
+    owner: Čysta Dyska
+    category: app-data
+    risk: safe
+    paths: ["{LOCALAPPDATA}\\CystaDyska"]
+    explain:
+      en: "Scan history of this app, used to show what changed between scans. About 1 MB per scan of a full drive; the last 30 scans per folder are kept."
+      be: "Гісторыя сканаванняў гэтай праграмы, каб паказваць змены паміж сканаваннямі. Каля 1 МБ на сканаванне ўсяго дыска; захоўваюцца апошнія 30 сканаванняў кожнай папкі."
+    suggest:
+      - text: {en: "Delete the folder to forget all history; Čysta Dyska starts a new one on the next scan.", be: "Выдаліце папку, каб забыць усю гісторыю; Čysta Dyska пачне новую пры наступным сканаванні."}

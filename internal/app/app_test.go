@@ -62,7 +62,7 @@ func fixture(t *testing.T) string {
 // the root summary, and Children then serves the tree level by level.
 func TestScanThenBrowseChildren(t *testing.T) {
 	em := newFakeEmitter()
-	a := New(em)
+	a := New(em, nil)
 	root := fixture(t)
 
 	if err := a.StartScan(root); err != nil {
@@ -98,7 +98,7 @@ func TestScanThenBrowseChildren(t *testing.T) {
 
 // Proves: Children before any scan is a clear error, not a nil-pointer panic.
 func TestChildrenBeforeScan(t *testing.T) {
-	a := New(newFakeEmitter())
+	a := New(newFakeEmitter(), nil)
 	if _, err := a.Children(`C:\`); err == nil {
 		t.Fatal("want error before any scan")
 	}
@@ -107,7 +107,7 @@ func TestChildrenBeforeScan(t *testing.T) {
 // Proves: a second scan cannot start while one is running.
 func TestStartScanRejectsConcurrentScan(t *testing.T) {
 	em := newFakeEmitter()
-	a := New(em)
+	a := New(em, nil)
 	root := fixture(t)
 
 	a.mu.Lock()
@@ -122,7 +122,7 @@ func TestStartScanRejectsConcurrentScan(t *testing.T) {
 // Proves: a scan of a missing folder reports an error event.
 func TestScanMissingFolderEmitsError(t *testing.T) {
 	em := newFakeEmitter()
-	a := New(em)
+	a := New(em, nil)
 	if err := a.StartScan(filepath.Join(t.TempDir(), "missing")); err != nil {
 		t.Fatal(err)
 	}
@@ -143,7 +143,7 @@ func TestChildrenCapsLargeDirectories(t *testing.T) {
 		}
 	}
 	em := newFakeEmitter()
-	a := New(em)
+	a := New(em, nil)
 	if err := a.StartScan(root); err != nil {
 		t.Fatal(err)
 	}

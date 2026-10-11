@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { CulpritsView } from '@/features/culprits/CulpritsView'
+import { HistoryView } from '@/features/history/HistoryView'
+import { TreemapView } from '@/features/map/TreemapView'
 import { SizeTree } from '@/features/scan/SizeTree'
 import { useScan, type ScanState } from '@/features/scan/useScan'
 import { locales, useI18n, type Locale } from '@/i18n'
@@ -71,12 +73,20 @@ export default function App() {
             <TabsList>
               <TabsTrigger value="culprits">{t('tabCulprits')}</TabsTrigger>
               <TabsTrigger value="folders">{t('tabFolders')}</TabsTrigger>
+              <TabsTrigger value="map">{t('tabMap')}</TabsTrigger>
+              <TabsTrigger value="history">{t('tabHistory')}</TabsTrigger>
             </TabsList>
             <TabsContent value="culprits" className="pt-3">
               <CulpritsView scanId={state.scanId} />
             </TabsContent>
             <TabsContent value="folders" className="pt-3">
               <SizeTree root={state.root} scanId={state.scanId} />
+            </TabsContent>
+            <TabsContent value="map" className="pt-3">
+              <TreemapView key={state.scanId} root={state.root} scanId={state.scanId} />
+            </TabsContent>
+            <TabsContent value="history" className="pt-3">
+              <HistoryView scanId={state.scanId} />
             </TabsContent>
           </Tabs>
         )}

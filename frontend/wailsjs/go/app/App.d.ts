@@ -6,6 +6,14 @@ export function CancelScan():Promise<void>;
 
 export function Children(arg1:string):Promise<Array<app.NodeDTO>>;
 
+export function CompareChildren(arg1:number,arg2:number,arg3:string):Promise<Array<app.DiffRowDTO>>;
+
 export function Culprits():Promise<app.CulpritsDTO>;
 
+export function History():Promise<app.HistoryDTO>;
+
+export function Hotspots(arg1:number,arg2:number):Promise<Array<app.DiffRowDTO>>;
+
 export function StartScan(arg1:string):Promise<void>;
+
+export function Treemap(arg1:string,arg2:number,arg3:number):Promise<Array<app.TileDTO>>;

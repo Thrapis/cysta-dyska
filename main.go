@@ -11,6 +11,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"cysta-dyska/internal/app"
+	"cysta-dyska/internal/store"
 )
 
 //go:embed all:frontend/dist
@@ -62,7 +63,8 @@ func start(cmd *exec.Cmd) error {
 func main() {
 	emitter := &wailsEmitter{}
 	shell := &Shell{}
-	a := app.New(emitter)
+	history := openHistory()
+	a := app.New(emitter, history)
 
 	err := wails.Run(&options.App{
 		Title:     "Čysta Dyska",
@@ -77,6 +79,11 @@ func main() {
 			emitter.ctx = ctx
 			shell.ctx = ctx
 		},
+		OnShutdown: func(context.Context) {
+			if history != nil {
+				history.Close()
+			}
+		},
 		Bind: []interface{}{
 			a,
 			shell,
@@ -86,4 +93,18 @@ func main() {
 	if err != nil {
 		println("Error:", err.Error())
 	}
+}
+
+// openHistory opens the scan history database. Without it the app still
+// works; it just cannot compare scans.
+func openHistory() *store.Store {
+	path, err := store.DefaultPath()
+	if err == nil {
+		var s *store.Store
+		if s, err = store.Open(path); err == nil {
+			return s
+		}
+	}
+	println("history unavailable:", err.Error())
+	return nil
 }

@@ -17,3 +17,9 @@ export function formatElapsed(ms: number): string {
   const s = Math.floor(ms / 1000)
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
 }
+
+/** Formats a signed byte change, e.g. "+1.5 GiB" or "−300 MiB". */
+export function formatDelta(bytes: number, locale: string): string {
+  if (bytes === 0) return '0 B'
+  return (bytes > 0 ? '+' : '−') + formatBytes(Math.abs(bytes), locale)
+}
