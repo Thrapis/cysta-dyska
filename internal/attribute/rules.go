@@ -69,7 +69,29 @@ type Suggestion struct {
 	Text     Text   `yaml:"text" json:"text"`
 	Command  string `yaml:"command,omitempty" json:"command,omitempty"`
 	Settings string `yaml:"settings,omitempty" json:"settings,omitempty"` // ms-settings: URI
+	// Run makes Command runnable from the app. Validation requires Command
+	// to be exactly Program and Args, so what is shown is what runs.
+	Run *Run `yaml:"run,omitempty" json:"run,omitempty"`
 }
+
+// Run is a command the app can run for the user after confirmation.
+type Run struct {
+	Program string   `yaml:"program" json:"program"` // found on PATH; never a path
+	Args    []string `yaml:"args,omitempty" json:"args,omitempty"`
+	Admin   bool     `yaml:"admin,omitempty" json:"admin,omitempty"` // needs a UAC prompt
+	// In is where to run it: "" for the user's home, "project" for the
+	// folder containing the finding (e.g. cargo clean next to Cargo.toml).
+	In string `yaml:"in,omitempty" json:"in,omitempty"`
+}
+
+// FileAction says what the app may do with a finding's files.
+type FileAction string
+
+const (
+	FileActionNone     FileAction = ""         // advice only
+	FileActionFolder   FileAction = "folder"   // the whole folder or file
+	FileActionContents FileAction = "contents" // what is inside, keeping the folder
+)
 
 // NameMatch matches a folder by name anywhere in the tree, optionally only
 // when a sibling entry matching one of Siblings (glob) exists next to it.
@@ -89,6 +111,9 @@ type Rule struct {
 	Template bool         `yaml:"template,omitempty"` // filled in by code, e.g. installed apps
 	Explain  Text         `yaml:"explain"`
 	Suggest  []Suggestion `yaml:"suggest,omitempty"`
+	// FileAction allows moving to the Recycle Bin (or deleting, if the
+	// user enabled it). Off unless a rule opts in.
+	FileAction FileAction `yaml:"fileAction,omitempty"`
 }
 
 // Pack is the full set of rules.
@@ -150,6 +175,32 @@ func Load(fsys fs.FS, dir string) (*Pack, error) {
 
 var varRef = regexp.MustCompile(`\{([A-Z0-9_]+)\}`)
 
+// validateRun checks a runnable suggestion.
+func validateRun(r *Rule, i int, s Suggestion, bad func(*Rule, string, ...any)) {
+	run := s.Run
+	if run.Program == "" || strings.ContainsAny(run.Program, `\/:`) {
+		bad(r, "suggest[%d].run.program %q must be a program name, not a path", i, run.Program)
+	}
+	shown := strings.Join(append([]string{run.Program}, run.Args...), " ")
+	if s.Command != shown {
+		bad(r, "suggest[%d].command %q must be exactly the run command %q", i, s.Command, shown)
+	}
+	for _, a := range run.Args {
+		if strings.ContainsAny(a, "<>") {
+			bad(r, "suggest[%d].run has a placeholder argument %q", i, a)
+		}
+	}
+	switch run.In {
+	case "":
+	case "project":
+		if len(r.Names) == 0 {
+			bad(r, "suggest[%d].run.in: project needs a name rule", i)
+		}
+	default:
+		bad(r, "suggest[%d].run.in %q is unknown", i, run.In)
+	}
+}
+
 func (p *Pack) validate() error {
 	known := map[string]bool{}
 	for _, k := range locations.Known {
@@ -209,6 +260,18 @@ func (p *Pack) validate() error {
 			if s.Settings != "" && !strings.HasPrefix(s.Settings, "ms-settings:") {
 				bad(r, "suggest[%d].settings must be an ms-settings: URI", i)
 			}
+			if s.Run != nil {
+				validateRun(r, i, s, bad)
+			}
+		}
+		switch r.FileAction {
+		case FileActionNone, FileActionFolder, FileActionContents:
+		default:
+			bad(r, "unknown fileAction %q", r.FileAction)
+		}
+		if r.FileAction != FileActionNone &&
+			(r.Risk == RiskSystem || r.Risk == RiskNever || r.Category == CatInstalledApp) {
+			bad(r, "fileAction is not allowed on %s/%s findings", r.Category, r.Risk)
 		}
 	}
 	for _, id := range []string{TemplateInstalledApp, TemplateAppData} {

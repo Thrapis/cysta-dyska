@@ -15,6 +15,9 @@ import (
 type Finding struct {
 	Rule  *Rule
 	Owner string // rule owner, or the app name for template rules
+	// App is the installed program for installed-app findings, so the UI
+	// can offer its uninstaller.
+	App *registry.App
 	Node  *scan.Node
 	// Alloc is the on-disk size that belongs to this finding alone: the
 	// node's size minus any nested findings, which are listed separately.
@@ -61,6 +64,15 @@ func (m *matcher) claim(n *scan.Node, r *Rule, owner string) {
 		return
 	}
 	m.claims[n] = &Finding{Rule: r, Owner: owner, Node: n}
+	m.order = append(m.order, n)
+}
+
+// claimApp claims an installed program's folder.
+func (m *matcher) claimApp(n *scan.Node, r *Rule, app registry.App) {
+	if _, taken := m.claims[n]; taken {
+		return
+	}
+	m.claims[n] = &Finding{Rule: r, Owner: app.Name, Node: n, App: &app}
 	m.order = append(m.order, n)
 }
 
@@ -191,7 +203,7 @@ func (m *matcher) matchApps(pack *Pack, vars locations.Vars, apps []registry.App
 			continue
 		}
 		if n := m.tree.Find(a.InstallDir); n != nil && n.IsDir {
-			m.claim(n, installed, a.Name)
+			m.claimApp(n, installed, a)
 		}
 	}
 

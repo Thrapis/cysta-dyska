@@ -5,6 +5,7 @@ import (
 	"strings"
 	"sync"
 
+	"cysta-dyska/internal/actions"
 	"cysta-dyska/internal/attribute"
 	"cysta-dyska/internal/scan"
 	"cysta-dyska/internal/sources/locations"
@@ -25,6 +26,7 @@ type CulpritDTO struct {
 	Unreadable bool                   `json:"unreadable"`
 	Explain    map[string]string      `json:"explain"` // locale -> text
 	Suggest    []attribute.Suggestion `json:"suggest"`
+	Actions    []ActionOptionDTO      `json:"actions"` // what the app can do here
 }
 
 // CulpritsDTO is the result of Culprits.
@@ -49,19 +51,22 @@ func loadPack() (*attribute.Pack, error) {
 
 // attribute explains a finished scan. It never fails the scan: problems
 // are reported as a warning alongside whatever could be explained.
-func (a *App) attribute(tree *scan.Node) CulpritsDTO {
+// It also returns the findings behind the items (same order) and the
+// machine's folders, which actions need.
+func (a *App) attribute(tree *scan.Node) (CulpritsDTO, []attribute.Finding, locations.Vars) {
 	res := CulpritsDTO{ScanAlloc: tree.Alloc, Items: []CulpritDTO{}}
+	vars := locations.Resolve(a.getenv)
 	p, err := loadPack()
 	if err != nil {
 		res.Warning = "rule pack: " + err.Error()
-		return res
+		return res, nil, vars
 	}
 	apps, err := a.installedApps()
 	if err != nil {
 		res.Warning = "installed programs: " + err.Error()
 	}
 
-	found := attribute.Match(tree, p, locations.Resolve(a.getenv), apps)
+	found := attribute.Match(tree, p, vars, apps)
 	for i, f := range found {
 		res.Explained += f.Alloc
 		if i >= maxCulprits {
@@ -70,7 +75,10 @@ func (a *App) attribute(tree *scan.Node) CulpritsDTO {
 		}
 		res.Items = append(res.Items, toCulprit(f))
 	}
-	return res
+	if len(found) > maxCulprits {
+		found = found[:maxCulprits]
+	}
+	return res, found, vars
 }
 
 func toCulprit(f attribute.Finding) CulpritDTO {
@@ -83,7 +91,7 @@ func toCulprit(f attribute.Finding) CulpritDTO {
 	}
 	sugg := make([]attribute.Suggestion, len(f.Rule.Suggest))
 	for i, s := range f.Rule.Suggest {
-		sugg[i] = attribute.Suggestion{Text: fill(s.Text), Command: s.Command, Settings: s.Settings}
+		sugg[i] = attribute.Suggestion{Text: fill(s.Text), Command: s.Command, Settings: s.Settings, Run: s.Run}
 	}
 	return CulpritDTO{
 		RuleID: f.Rule.ID, Owner: f.Owner,
@@ -93,12 +101,25 @@ func toCulprit(f attribute.Finding) CulpritDTO {
 	}
 }
 
-// Culprits returns what explains the space in the last completed scan.
+// Culprits returns what explains the space in the last completed scan,
+// with the actions currently available for each finding.
 func (a *App) Culprits() (CulpritsDTO, error) {
 	a.mu.Lock()
-	defer a.mu.Unlock()
 	if a.culprits == nil {
+		a.mu.Unlock()
 		return CulpritsDTO{}, errors.New("no scan results yet")
 	}
-	return *a.culprits, nil
+	res := *a.culprits
+	findings, vars := a.findings, a.vars
+	a.mu.Unlock()
+
+	allowDelete := a.allowPermanentDelete()
+	guard := actions.NewGuard(vars)
+	res.Items = append([]CulpritDTO(nil), res.Items...)
+	for i := range res.Items {
+		if i < len(findings) {
+			res.Items[i].Actions = actionOptions(findings[i], guard, allowDelete)
+		}
+	}
+	return res, nil
 }

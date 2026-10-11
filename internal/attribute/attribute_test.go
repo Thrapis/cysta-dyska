@@ -63,6 +63,68 @@ func TestValidationRejectsBrokenRules(t *testing.T) {
 	}
 }
 
+// Proves: runnable suggestions and file actions are validated so a rule
+// can never show one command but run another, run a placeholder command,
+// look up a program by path, or offer file actions on Windows items.
+func TestValidationOfActions(t *testing.T) {
+	const templates = `
+  - {id: installed-app, template: true, category: installed-app, risk: review, explain: {en: a, be: b}}
+  - {id: app-data, template: true, category: app-data, risk: review, explain: {en: a, be: b}}
+`
+	base := `{id: x, owner: o, category: temp, risk: safe, paths: ["{TEMP}"], explain: {en: a, be: b}, `
+	sugg := func(cmd, run string) string {
+		return base + `suggest: [{text: {en: a, be: b}, command: "` + cmd + `", run: ` + run + `}]}`
+	}
+	bad := map[string]string{
+		"shown differs from run":  sugg("go clean -cache", `{program: go, args: [clean, -modcache]}`),
+		"placeholder in args":     sugg("wsl --manage <distro>", `{program: wsl, args: [--manage, "<distro>"]}`),
+		"program with a path":     sugg(`C:\\x\\go clean`, `{program: "C:\\x\\go", args: [clean]}`),
+		"run without command":     base + `suggest: [{text: {en: a, be: b}, run: {program: go, args: [clean]}}]}`,
+		"project dir on path rule": sugg("go clean", `{program: go, args: [clean], in: project}`),
+		"unknown in":              sugg("go clean", `{program: go, args: [clean], in: home}`),
+		"file action on system":   `{id: x, owner: o, category: system, risk: system, paths: ["{TEMP}"], fileAction: folder, explain: {en: a, be: b}}`,
+		"file action on never":    `{id: x, owner: o, category: system, risk: never, paths: ["{TEMP}"], fileAction: contents, explain: {en: a, be: b}}`,
+		"unknown file action":     base + `fileAction: shred}`,
+		"file action on programs": `{id: x, owner: o, category: installed-app, risk: review, paths: ["{TEMP}"], fileAction: folder, explain: {en: a, be: b}}`,
+	}
+	for name, rule := range bad {
+		fsys := fstest.MapFS{"r/x.yaml": {Data: []byte("version: 1\nrules:\n  - " + rule + templates)}}
+		if _, err := Load(fsys, "r"); err == nil {
+			t.Errorf("%s: Load accepted it", name)
+		}
+	}
+
+	good := map[string]string{
+		"plain run":   sugg("go clean -cache", `{program: go, args: [clean, -cache]}`),
+		"admin run":   sugg("powercfg /hibernate off", `{program: powercfg, args: [/hibernate, "off"], admin: true}`),
+		"file action": base + `fileAction: contents}`,
+		"project run": `{id: x, owner: o, category: build-output, risk: safe, names: [{name: target}], explain: {en: a, be: b}, suggest: [{text: {en: a, be: b}, command: "cargo clean", run: {program: cargo, args: [clean], in: project}}]}`,
+	}
+	for name, rule := range good {
+		fsys := fstest.MapFS{"r/x.yaml": {Data: []byte("version: 1\nrules:\n  - " + rule + templates)}}
+		if _, err := Load(fsys, "r"); err != nil {
+			t.Errorf("%s: rejected: %v", name, err)
+		}
+	}
+}
+
+// Proves: the shipped rules never offer file actions on Recycle Bin,
+// Downloads, browser caches or anything Windows owns.
+func TestShippedFileActionsAreConservative(t *testing.T) {
+	p := mustPack(t)
+	for _, id := range []string{"recycle-bin", "downloads", "chrome-cache", "edge-cache", "firefox-cache",
+		"hiberfil", "pagefile", "winsxs", "windows-installer-cache", "installed-app", "docker-desktop-disk", "wsl-disks"} {
+		r := p.Rule(id)
+		if r == nil {
+			t.Errorf("rule %s missing", id)
+			continue
+		}
+		if r.FileAction != FileActionNone {
+			t.Errorf("rule %s offers file action %q", id, r.FileAction)
+		}
+	}
+}
+
 // fixture builds a fake user profile in a temp dir and returns the scan
 // tree and matching location variables.
 func fixture(t *testing.T, files map[string]int) (*scan.Node, locations.Vars) {
@@ -248,7 +310,7 @@ func TestMatchInstalledApps(t *testing.T) {
 	}
 	got := byRule(Match(tree, mustPack(t), vars, apps))
 
-	if f := got["installed-app"]; len(f) != 1 || f[0].Owner != "Foo Editor" {
+	if f := got["installed-app"]; len(f) != 1 || f[0].Owner != "Foo Editor" || f[0].App == nil || f[0].App.Name != "Foo Editor" {
 		t.Errorf("installed-app = %+v", f)
 	}
 	owners := map[string]bool{}

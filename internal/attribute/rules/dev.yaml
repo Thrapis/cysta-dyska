@@ -12,6 +12,7 @@ rules:
     suggest:
       - text: {en: "Clear it with Go's own command.", be: "Ачысціце яго ўласнай камандай Go."}
         command: "go clean -cache"
+        run: {program: go, args: [clean, -cache]}
 
   - id: go-mod-cache
     owner: Go
@@ -24,6 +25,7 @@ rules:
     suggest:
       - text: {en: "Clear it with Go's own command (files are read-only, so this is easier than deleting).", be: "Ачысціце яго камандай Go (файлы толькі для чытання, таму так прасцей, чым выдаляць)."}
         command: "go clean -modcache"
+        run: {program: go, args: [clean, -modcache]}
 
   - id: npm-cache
     owner: npm
@@ -36,6 +38,7 @@ rules:
     suggest:
       - text: {en: "Clear it with npm.", be: "Ачысціце яго праз npm."}
         command: "npm cache clean --force"
+        run: {program: npm, args: [cache, clean, --force]}
 
   - id: pnpm-store
     owner: pnpm
@@ -48,6 +51,7 @@ rules:
     suggest:
       - text: {en: "Remove packages no project references.", be: "Выдаліце пакеты, на якія не спасылаецца ніводны праект."}
         command: "pnpm store prune"
+        run: {program: pnpm, args: [store, prune]}
 
   - id: yarn-cache
     owner: Yarn
@@ -60,6 +64,7 @@ rules:
     suggest:
       - text: {en: "Clear it with Yarn.", be: "Ачысціце яго праз Yarn."}
         command: "yarn cache clean"
+        run: {program: yarn, args: [cache, clean]}
 
   - id: pip-cache
     owner: pip
@@ -72,6 +77,7 @@ rules:
     suggest:
       - text: {en: "Clear it with pip.", be: "Ачысціце яго праз pip."}
         command: "pip cache purge"
+        run: {program: pip, args: [cache, purge]}
 
   - id: uv-cache
     owner: uv
@@ -84,11 +90,13 @@ rules:
     suggest:
       - text: {en: "Clear it with uv.", be: "Ачысціце яго праз uv."}
         command: "uv cache clean"
+        run: {program: uv, args: [cache, clean]}
 
   - id: cargo-registry
     owner: Rust (Cargo)
     category: dev-cache
     risk: safe
+    fileAction: folder
     paths: ["{CARGO_HOME}\\registry", "{CARGO_HOME}\\git"]
     explain:
       en: "Crates downloaded by Cargo. Cargo downloads them again when a project needs them."
@@ -112,6 +120,7 @@ rules:
     owner: Gradle
     category: dev-cache
     risk: safe
+    fileAction: folder
     paths: ["{GRADLE_HOME}\\caches"]
     explain:
       en: "Gradle's dependency and build cache. Gradle downloads what it needs again."
@@ -124,6 +133,7 @@ rules:
     owner: Gradle
     category: dev-tools
     risk: review
+    fileAction: contents
     paths: ["{GRADLE_HOME}\\wrapper\\dists"]
     explain:
       en: "Gradle versions downloaded by project wrappers. Old versions stay after projects upgrade."
@@ -135,6 +145,7 @@ rules:
     owner: Maven
     category: dev-cache
     risk: safe
+    fileAction: folder
     paths: ["{MAVEN_REPO}"]
     explain:
       en: "Maven's local repository of downloaded libraries."
@@ -153,6 +164,7 @@ rules:
     suggest:
       - text: {en: "Clear all NuGet caches with the .NET CLI.", be: "Ачысціце ўсе кэшы NuGet праз .NET CLI."}
         command: "dotnet nuget locals all --clear"
+        run: {program: dotnet, args: [nuget, locals, all, --clear]}
 
   - id: android-sdk
     owner: Android SDK
@@ -180,6 +192,7 @@ rules:
     owner: JetBrains IDEs
     category: dev-cache
     risk: review
+    fileAction: folder
     paths: ["{LOCALAPPDATA}\\JetBrains\\*"]
     explain:
       en: "Caches, indexes and logs of one JetBrains IDE version. Folders of versions you no longer run are left behind after updates."
@@ -191,6 +204,7 @@ rules:
     owner: Visual Studio Code
     category: app-cache
     risk: safe
+    fileAction: folder
     paths: ["{APPDATA}\\Code\\Cache", "{APPDATA}\\Code\\CachedData", "{APPDATA}\\Code\\CachedExtensionVSIXs"]
     explain:
       en: "VS Code caches. VS Code recreates them."
@@ -202,6 +216,7 @@ rules:
     owner: JavaScript projects
     category: build-output
     risk: safe
+    fileAction: folder
     names: [{name: node_modules, siblings: ["package.json"]}]
     explain:
       en: "Installed dependencies of a JavaScript project. They are reinstalled from package.json."
@@ -213,6 +228,7 @@ rules:
     owner: Rust projects
     category: build-output
     risk: safe
+    fileAction: folder
     names: [{name: target, siblings: ["Cargo.toml"]}]
     explain:
       en: "Rust build output. It can grow to many gigabytes per project."
@@ -220,11 +236,13 @@ rules:
     suggest:
       - text: {en: "Run in the project folder:", be: "Выканайце ў папцы праекта:"}
         command: "cargo clean"
+        run: {program: cargo, args: [clean], in: project}
 
   - id: gradle-build
     owner: Gradle projects
     category: build-output
     risk: safe
+    fileAction: folder
     names: [{name: build, siblings: ["build.gradle", "build.gradle.kts"]}]
     explain:
       en: "Gradle build output; rebuilt on the next build."
@@ -232,11 +250,13 @@ rules:
     suggest:
       - text: {en: "Run in the project folder:", be: "Выканайце ў папцы праекта:"}
         command: "gradle clean"
+        run: {program: gradle, args: [clean], in: project}
 
   - id: dotnet-obj
     owner: .NET projects
     category: build-output
     risk: safe
+    fileAction: folder
     names:
       - {name: obj, siblings: ["*.csproj", "*.fsproj", "*.vbproj"]}
       - {name: bin, siblings: ["*.csproj", "*.fsproj", "*.vbproj"]}
@@ -246,11 +266,13 @@ rules:
     suggest:
       - text: {en: "Run in the project folder:", be: "Выканайце ў папцы праекта:"}
         command: "dotnet clean"
+        run: {program: dotnet, args: [clean], in: project}
 
   - id: python-venv
     owner: Python projects
     category: build-output
     risk: review
+    fileAction: folder
     names: [{name: .venv, siblings: ["pyproject.toml", "requirements.txt", "setup.py"]}]
     explain:
       en: "A Python virtual environment. It can be recreated from the project's requirements, unless packages were installed by hand."
@@ -268,7 +290,8 @@ rules:
       be: "Віртуальны дыск Docker Desktop з усімі вобразамі, кантэйнерамі і тамамі. Ён расце, але сам не памяншаецца."
     suggest:
       - text: {en: "Remove unused images, containers and build cache. Volumes are kept unless you add --volumes.", be: "Выдаліце непатрэбныя вобразы, кантэйнеры і кэш зборкі. Тамы застануцца, калі не дадаць --volumes."}
-        command: "docker system prune"
+        command: "docker system prune --force"
+        run: {program: docker, args: [system, prune, --force]}
       - text: {en: "The disk file keeps its size until Docker Desktop reclaims the space; see Docker's docs on disk usage.", be: "Файл дыска захоўвае памер, пакуль Docker Desktop не вызваліць месца; гл. дакументацыю Docker пра месца на дыску."}
 
   - id: wsl-disks

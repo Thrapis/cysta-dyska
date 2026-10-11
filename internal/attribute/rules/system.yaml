@@ -12,6 +12,7 @@ rules:
     suggest:
       - text: {en: "If you never hibernate, turn it off in an administrator terminal. This also disables Fast Startup.", be: "Калі вы не карыстаецеся гібернацыяй, адключыце яе ў тэрмінале адміністратара. Гэта таксама адключыць хуткі запуск."}
         command: "powercfg /hibernate off"
+        run: {program: powercfg, args: [/hibernate, "off"], admin: true}
 
   - id: pagefile
     owner: Windows
@@ -47,6 +48,7 @@ rules:
     suggest:
       - text: {en: "Never delete files here. Windows can clean superseded components itself (administrator terminal):", be: "Ніколі не выдаляйце тут файлы. Windows можа сама прыбраць састарэлыя кампаненты (тэрмінал адміністратара):"}
         command: "Dism.exe /Online /Cleanup-Image /StartComponentCleanup"
+        run: {program: Dism.exe, args: [/Online, /Cleanup-Image, /StartComponentCleanup], admin: true}
 
   - id: windows-update-download
     owner: Windows Update
@@ -147,6 +149,7 @@ rules:
     owner: Windows
     category: temp
     risk: safe
+    fileAction: contents
     paths: ["{TEMP}", "{SYSTEMROOT}\\Temp"]
     explain:
       en: "Temporary files left by programs and installers."
@@ -159,6 +162,7 @@ rules:
     owner: Windows Error Reporting
     category: temp
     risk: safe
+    fileAction: contents
     paths:
       - "{LOCALAPPDATA}\\CrashDumps"
       - "{SYSTEMROOT}\\MEMORY.DMP"

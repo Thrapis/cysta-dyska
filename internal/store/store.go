@@ -61,9 +61,11 @@ type DiffRow struct {
 // Delta is the change in on-disk bytes.
 func (r DiffRow) Delta() int64 { return r.After - r.Before }
 
-const schemaVersion = 1
-
-const schema = `
+// migrations[i] brings the schema from version i to i+1. Never edit a
+// shipped migration; add a new one.
+var migrations = []string{
+	// 1: scan history (M4)
+	`
 CREATE TABLE snapshots (
 	id          INTEGER PRIMARY KEY,
 	root        TEXT    NOT NULL,
@@ -91,7 +93,29 @@ CREATE TABLE entries (
 	PRIMARY KEY (snapshot_id, key)
 ) WITHOUT ROWID;
 CREATE INDEX entries_by_parent ON entries (snapshot_id, parent);
-`
+`,
+	// 2: settings and the log of cleanup actions (M5)
+	`
+CREATE TABLE settings (
+	key   TEXT PRIMARY KEY,
+	value TEXT NOT NULL
+) WITHOUT ROWID;
+
+CREATE TABLE actions (
+	id           INTEGER PRIMARY KEY,
+	at           INTEGER NOT NULL, -- unix milliseconds, UTC
+	kind         TEXT    NOT NULL,
+	rule_id      TEXT    NOT NULL,
+	owner        TEXT    NOT NULL,
+	target       TEXT    NOT NULL,
+	command      TEXT    NOT NULL,
+	bytes_before INTEGER NOT NULL,
+	bytes_after  INTEGER NOT NULL,
+	outcome      TEXT    NOT NULL, -- running, done, failed, declined
+	detail       TEXT    NOT NULL
+);
+`,
+}
 
 // DefaultPath is %LOCALAPPDATA%\CystaDyska\history.db on Windows. Local, not
 // roaming: history is per machine and should not be synced.
@@ -133,24 +157,28 @@ func (s *Store) migrate() error {
 	if err := s.db.QueryRow(`PRAGMA user_version`).Scan(&v); err != nil {
 		return err
 	}
-	switch {
-	case v == schemaVersion:
-		return nil
-	case v > schemaVersion:
+	if v > len(migrations) {
 		return fmt.Errorf("created by a newer version of Čysta Dyska (schema %d)", v)
 	}
-	tx, err := s.db.Begin()
-	if err != nil {
-		return err
+	// Each step commits on its own, so an interrupted upgrade resumes.
+	for ; v < len(migrations); v++ {
+		tx, err := s.db.Begin()
+		if err != nil {
+			return err
+		}
+		if _, err := tx.Exec(migrations[v]); err != nil {
+			tx.Rollback()
+			return fmt.Errorf("upgrading to schema %d: %w", v+1, err)
+		}
+		if _, err := tx.Exec(fmt.Sprintf(`PRAGMA user_version = %d`, v+1)); err != nil {
+			tx.Rollback()
+			return err
+		}
+		if err := tx.Commit(); err != nil {
+			return err
+		}
 	}
-	defer tx.Rollback()
-	if _, err := tx.Exec(schema); err != nil {
-		return err
-	}
-	if _, err := tx.Exec(fmt.Sprintf(`PRAGMA user_version = %d`, schemaVersion)); err != nil {
-		return err
-	}
-	return tx.Commit()
+	return nil
 }
 
 func rootKey(root string) string { return strings.ToLower(filepath.Clean(root)) }

@@ -19,6 +19,7 @@ rules:
     template: true
     category: app-data
     risk: review
+    fileAction: folder
     explain:
       en: "Data kept by {owner}: settings, caches, logs and sometimes your documents. Uninstalling the program often leaves it behind."
       be: "Даныя {owner}: налады, кэш, журналы, а часам і вашы дакументы. Пасля выдалення праграмы яны часта застаюцца."

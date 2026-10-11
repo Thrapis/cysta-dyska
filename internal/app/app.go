@@ -9,7 +9,9 @@ import (
 	"sync"
 	"time"
 
+	"cysta-dyska/internal/attribute"
 	"cysta-dyska/internal/scan"
+	"cysta-dyska/internal/sources/locations"
 	"cysta-dyska/internal/sources/registry"
 	"cysta-dyska/internal/store"
 )
@@ -69,12 +71,18 @@ type App struct {
 	historyOpts     store.Options
 	hotspotMinDelta int64
 
+	exec     executors  // do the actual cleanup work; replaced in tests
+	actionMu sync.Mutex // one action at a time
+
 	mu             sync.Mutex
 	cancel         context.CancelFunc // non-nil while a scan is running
 	tree           *scan.Node         // last completed scan
 	culprits       *CulpritsDTO       // attribution of tree
 	snapshotID     int64              // history id of tree; 0 if not saved
 	historyWarning string
+	findings       []attribute.Finding // behind culprits.Items, same order
+	vars           locations.Vars      // this machine's folders at scan time
+	plans          map[string]*plan    // planned actions waiting for RunAction
 }
 
 // New returns an App that reports events through emit and saves finished
@@ -83,6 +91,7 @@ func New(emit Emitter, history *store.Store) *App {
 	return &App{
 		emit: emit, getenv: os.Getenv, installedApps: registry.Installed,
 		history: history, historyOpts: store.DefaultOptions, hotspotMinDelta: defaultHotspotMinDelta,
+		exec: defaultExecutors(),
 	}
 }
 
@@ -114,10 +123,12 @@ func (a *App) run(ctx context.Context, root string) {
 
 	took := time.Since(start)
 	var culprits CulpritsDTO
+	var findings []attribute.Finding
+	var vars locations.Vars
 	var snapshotID int64
 	var historyWarning string
 	if err == nil {
-		culprits = a.attribute(tree)                           // ~0.2 s for a full drive
+		culprits, findings, vars = a.attribute(tree)           // ~0.2 s for a full drive
 		snapshotID, historyWarning = a.saveHistory(tree, took) // ~10k rows for a full drive
 	}
 
@@ -126,6 +137,8 @@ func (a *App) run(ctx context.Context, root string) {
 	if err == nil {
 		a.tree = tree
 		a.culprits = &culprits
+		a.findings, a.vars = findings, vars
+		a.plans = nil // plans refer to the previous scan
 		a.snapshotID, a.historyWarning = snapshotID, historyWarning
 	}
 	a.mu.Unlock()

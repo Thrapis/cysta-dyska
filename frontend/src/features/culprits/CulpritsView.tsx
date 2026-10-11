@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useI18n, type MessageKey } from '@/i18n'
 import { formatBytes } from '@/lib/format'
 import { cn } from 'cn'
+import { ActionDialog } from './ActionDialog'
 
 type Risk = 'safe' | 'review' | 'system' | 'never'
 const RISKS: Risk[] = ['safe', 'review', 'system', 'never']
@@ -49,7 +50,7 @@ const riskKey = (r: string) => `risk_${r}` as MessageKey
 const riskHelpKey = (r: string) => `riskHelp_${r}` as MessageKey
 
 /** "Who is using my disk": findings from the rule pack and installed apps. */
-export function CulpritsView({ scanId }: { scanId: number }) {
+export function CulpritsView({ scanId, refresh }: { scanId: number; refresh: number }) {
   const { t, locale } = useI18n()
   const [data, setData] = useState<app.CulpritsDTO | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -63,7 +64,7 @@ export function CulpritsView({ scanId }: { scanId: number }) {
     return () => {
       live = false
     }
-  }, [scanId])
+  }, [scanId, refresh])
 
   const groups = useMemo(() => {
     if (!data) return []
@@ -158,23 +159,7 @@ function GroupCard({ group }: { group: Group }) {
             <p className="text-xs text-muted-foreground">{t('locations', { count: formatNumber(items.length) })}</p>
           )}
           {visible.map((it) => (
-            <div key={it.path} className="flex items-center gap-2 text-sm">
-              <code className="min-w-0 flex-1 truncate text-xs" title={it.path}>
-                {it.path}
-              </code>
-              <span className="shrink-0 tabular-nums text-muted-foreground">
-                {it.unreadable ? t('unknownSize') : formatBytes(it.alloc, locale)}
-              </span>
-              <Button
-                size="icon-sm"
-                variant="ghost"
-                title={t('reveal')}
-                aria-label={t('reveal')}
-                onClick={() => void Reveal(it.path)}
-              >
-                <FolderSearch />
-              </Button>
-            </div>
+            <LocationRow key={it.path} item={it} />
           ))}
           {items.length > 3 && (
             <Button size="sm" variant="link" className="px-0" onClick={() => setShowAll(!showAll)}>
@@ -184,6 +169,45 @@ function GroupCard({ group }: { group: Group }) {
         </div>
       </CardContent>
     </Card>
+  )
+}
+
+function LocationRow({ item }: { item: app.CulpritDTO }) {
+  const { t, locale } = useI18n()
+  const [open, setOpen] = useState(false)
+  const [handled, setHandled] = useState<app.ActionResultDTO | null>(null)
+
+  return (
+    <div className="flex items-center gap-2 text-sm">
+      <code className="min-w-0 flex-1 truncate text-xs" title={item.path}>
+        {item.path}
+      </code>
+      {handled && (
+        <Badge variant="secondary" className="shrink-0">
+          {t('actedOn', { outcome: handled.outcome === 'done' ? `−${formatBytes(handled.freed, locale)}` : handled.outcome })}
+        </Badge>
+      )}
+      <span className="shrink-0 tabular-nums text-muted-foreground">
+        {item.unreadable ? t('unknownSize') : formatBytes(item.alloc, locale)}
+      </span>
+      {item.actions.length > 0 && (
+        <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
+          {t('actions')}
+        </Button>
+      )}
+      <Button
+        size="icon-sm"
+        variant="ghost"
+        title={t('reveal')}
+        aria-label={t('reveal')}
+        onClick={() => void Reveal(item.path)}
+      >
+        <FolderSearch />
+      </Button>
+      {item.actions.length > 0 && (
+        <ActionDialog item={item} open={open} onOpenChange={setOpen} onDone={setHandled} />
+      )}
+    </div>
   )
 }
 

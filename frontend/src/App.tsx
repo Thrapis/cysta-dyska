@@ -8,6 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { CulpritsView } from '@/features/culprits/CulpritsView'
 import { HistoryView } from '@/features/history/HistoryView'
 import { TreemapView } from '@/features/map/TreemapView'
+import { ActivityView } from '@/features/activity/ActivityView'
+import { SettingsButton } from '@/features/settings/SettingsButton'
 import { SizeTree } from '@/features/scan/SizeTree'
 import { useScan, type ScanState } from '@/features/scan/useScan'
 import { locales, useI18n, type Locale } from '@/i18n'
@@ -17,6 +19,8 @@ export default function App() {
   const { t, locale, setLocale } = useI18n()
   const { state, start, cancel } = useScan()
   const [folder, setFolder] = useState('')
+  // Bumped when settings change, so views that depend on them reload.
+  const [settingsVersion, setSettingsVersion] = useState(0)
   const scanning = state.status === 'scanning'
 
   const pick = async () => {
@@ -32,6 +36,7 @@ export default function App() {
           <h1 className="font-heading text-lg font-semibold leading-tight">{t('appName')}</h1>
           <p className="text-sm text-muted-foreground">{t('tagline')}</p>
         </div>
+        <SettingsButton onChange={() => setSettingsVersion((v) => v + 1)} />
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
           {t('language')}
           <select
@@ -75,9 +80,10 @@ export default function App() {
               <TabsTrigger value="folders">{t('tabFolders')}</TabsTrigger>
               <TabsTrigger value="map">{t('tabMap')}</TabsTrigger>
               <TabsTrigger value="history">{t('tabHistory')}</TabsTrigger>
+              <TabsTrigger value="activity">{t('tabActivity')}</TabsTrigger>
             </TabsList>
             <TabsContent value="culprits" className="pt-3">
-              <CulpritsView scanId={state.scanId} />
+              <CulpritsView scanId={state.scanId} refresh={settingsVersion} />
             </TabsContent>
             <TabsContent value="folders" className="pt-3">
               <SizeTree root={state.root} scanId={state.scanId} />
@@ -88,13 +94,16 @@ export default function App() {
             <TabsContent value="history" className="pt-3">
               <HistoryView scanId={state.scanId} />
             </TabsContent>
+            <TabsContent value="activity" className="pt-3">
+              <ActivityView refresh={settingsVersion} />
+            </TabsContent>
           </Tabs>
         )}
       </main>
 
       <footer className="flex flex-wrap items-center gap-2 border-t px-5 py-2 text-xs text-muted-foreground">
         <Badge variant="secondary">
-          <ShieldCheck /> {t('readOnlyNote')}
+          <ShieldCheck /> {t('safetyNote')}
         </Badge>
         <span>{t('sizeNote')}</span>
       </footer>
