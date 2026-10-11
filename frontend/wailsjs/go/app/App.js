@@ -46,6 +46,10 @@ export function Settings() {
   return window['go']['app']['App']['Settings']();
 }
 
+export function StartFastScan(arg1) {
+  return window['go']['app']['App']['StartFastScan'](arg1);
+}
+
 export function StartScan(arg1) {
   return window['go']['app']['App']['StartScan'](arg1);
 }

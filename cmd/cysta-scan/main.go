@@ -10,18 +10,24 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
+	"strings"
 	"time"
 
 	"cysta-dyska/internal/attribute"
+	"cysta-dyska/internal/fastscan"
 	"cysta-dyska/internal/scan"
 	"cysta-dyska/internal/sources/locations"
 	"cysta-dyska/internal/sources/registry"
 )
 
 func main() {
+	if fastscan.IsHelperCall(os.Args) { // started by -fast through UAC
+		os.Exit(fastscan.RunHelper(os.Args[2:]))
+	}
 	top := flag.Int("top", 20, "number of largest entries to print")
 	workers := flag.Int("workers", 0, "directories read in parallel (0 = default)")
 	quiet := flag.Bool("q", false, "no live progress on stderr")
+	fast := flag.Bool("fast", false, "read the drive's MFT through an elevated helper (UAC prompt; drive roots only)")
 	culprits := flag.Bool("culprits", false, "explain what uses the space (rule pack + installed apps)")
 	flag.Usage = func() {
 		fmt.Fprintln(os.Stderr, "usage: cysta-scan [-top N] [-workers N] [-q] [-culprits] <folder>")
@@ -42,15 +48,28 @@ func main() {
 	}
 	start := time.Now()
 	var last scan.Progress
-	tree, err := scan.Scan(ctx, flag.Arg(0), scan.Options{
-		Workers: w,
-		OnProgress: func(p scan.Progress) {
-			last = p
-			if !*quiet {
-				fmt.Fprintf(os.Stderr, "\r%d files, %s", p.Files, human(p.Bytes))
-			}
-		},
-	})
+	var tree *scan.Node
+	var err error
+	if *fast {
+		var steps []fastscan.Step
+		tree, steps, err = fastscan.RunTimed(ctx, strings.TrimSuffix(flag.Arg(0), `\`))
+		for _, s := range steps {
+			fmt.Fprintf(os.Stderr, "%8.2fs  %s\n", s.Took.Seconds(), s.Name)
+		}
+		if tree != nil {
+			last = scan.Progress{Files: tree.Files, Dirs: tree.Dirs, Bytes: tree.Alloc}
+		}
+	} else {
+		tree, err = scan.Scan(ctx, flag.Arg(0), scan.Options{
+			Workers: w,
+			OnProgress: func(p scan.Progress) {
+				last = p
+				if !*quiet {
+					fmt.Fprintf(os.Stderr, "\r%d files, %s", p.Files, human(p.Bytes))
+				}
+			},
+		})
+	}
 	elapsed := time.Since(start)
 	if !*quiet {
 		fmt.Fprintln(os.Stderr)

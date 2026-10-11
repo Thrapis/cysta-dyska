@@ -29,9 +29,12 @@ func TestMigrateFromVersion1(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer s.Close()
-	list, err := s.Snapshots(`C:\x`)
+	list, err := s.Snapshots(`C:\x`, MethodWalk)
 	if err != nil || len(list) != 1 {
 		t.Fatalf("snapshots after upgrade = %v, %v", list, err)
+	}
+	if list[0].Method != MethodWalk {
+		t.Errorf("old snapshot method = %q, want %q (they were all normal scans)", list[0].Method, MethodWalk)
 	}
 	if err := s.SetSetting("k", "v"); err != nil {
 		t.Fatalf("settings table missing after upgrade: %v", err)
@@ -40,6 +43,37 @@ func TestMigrateFromVersion1(t *testing.T) {
 	s.db.QueryRow(`PRAGMA user_version`).Scan(&v)
 	if v != len(migrations) {
 		t.Errorf("user_version = %d, want %d", v, len(migrations))
+	}
+}
+
+// Proves: actions left "running" by a previous run of the app (it crashed or
+// was killed mid-action) are marked "interrupted" with a note, finished
+// actions are left alone, and the count of marked actions is returned.
+func TestMarkInterrupted(t *testing.T) {
+	s := openTest(t)
+	done, _ := s.StartAction(ActionRecord{Kind: "recycle", Target: `C:\a`})
+	s.FinishAction(done, "done", "", 0)
+	cut, _ := s.StartAction(ActionRecord{Kind: "delete", Target: `C:\b`, BytesBefore: 50})
+
+	n, err := s.MarkInterrupted()
+	if err != nil || n != 1 {
+		t.Fatalf("MarkInterrupted = %d, %v; want 1", n, err)
+	}
+	log, _ := s.Actions(10)
+	for _, r := range log {
+		switch r.ID {
+		case cut:
+			if r.Outcome != "interrupted" || r.Detail == "" || r.BytesBefore != 50 {
+				t.Errorf("cut-short action = %+v", r)
+			}
+		case done:
+			if r.Outcome != "done" {
+				t.Errorf("finished action changed: %+v", r)
+			}
+		}
+	}
+	if n, _ := s.MarkInterrupted(); n != 0 {
+		t.Errorf("second call marked %d, want 0", n)
 	}
 }
 

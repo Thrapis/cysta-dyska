@@ -47,6 +47,7 @@ export function HistoryView({ scanId }: { scanId: number }) {
   return (
     <div className="space-y-4">
       <p className="text-xs text-muted-foreground">{t('historyNote', { size: minSize })}</p>
+      <p className="text-xs text-muted-foreground">{t(history.method === 'mft' ? 'historyMethod_mft' : 'historyMethod_walk')}</p>
       {older.length === 0 || !current ? (
         <p className="text-sm">{t('historyFirst')}</p>
       ) : (

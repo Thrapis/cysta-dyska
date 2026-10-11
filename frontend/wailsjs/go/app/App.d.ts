@@ -24,6 +24,8 @@ export function SetAllowPermanentDelete(arg1:boolean):Promise<void>;
 
 export function Settings():Promise<app.SettingsDTO>;
 
+export function StartFastScan(arg1:string):Promise<void>;
+
 export function StartScan(arg1:string):Promise<void>;
 
 export function Treemap(arg1:string,arg2:number,arg3:number):Promise<Array<app.TileDTO>>;

@@ -34,11 +34,11 @@ func TestSaveAndList(t *testing.T) {
 		t.Fatal(err)
 	}
 	tree := scanFixture(t, map[string]int{"a/big.bin": 200_000})
-	id1, err := s.Save(tree, time.Second, testOpts())
+	id1, err := s.Save(tree, time.Second, MethodWalk, testOpts())
 	if err != nil {
 		t.Fatal(err)
 	}
-	id2, err := s.Save(tree, time.Second, testOpts())
+	id2, err := s.Save(tree, time.Second, MethodWalk, testOpts())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -49,7 +49,7 @@ func TestSaveAndList(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer s.Close()
-	list, err := s.Snapshots(upper(tree.Path()))
+	list, err := s.Snapshots(upper(tree.Path()), MethodWalk)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -192,13 +192,13 @@ func TestPruneKeepsNewest(t *testing.T) {
 	opts.Keep = 3
 	var ids []int64
 	for i := 0; i < 5; i++ {
-		id, err := s.Save(tree, time.Second, opts)
+		id, err := s.Save(tree, time.Second, MethodWalk, opts)
 		if err != nil {
 			t.Fatal(err)
 		}
 		ids = append(ids, id)
 	}
-	list, _ := s.Snapshots(tree.Path())
+	list, _ := s.Snapshots(tree.Path(), MethodWalk)
 	if len(list) != 3 || list[2].ID != ids[2] {
 		t.Fatalf("kept %+v, want the last 3 of %v", list, ids)
 	}
@@ -214,7 +214,7 @@ func TestPruneKeepsNewest(t *testing.T) {
 func saveScan(t *testing.T, s *Store, root string) int64 {
 	t.Helper()
 	tree := mustScan(t, root)
-	id, err := s.Save(tree, time.Second, testOpts())
+	id, err := s.Save(tree, time.Second, MethodWalk, testOpts())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -228,4 +228,49 @@ func mustScan(t *testing.T, root string) *scan.Node {
 		t.Fatal(err)
 	}
 	return tree
+}
+
+// Proves: snapshots made by the normal scan and by the full (MFT) scan of
+// the same folder are kept apart: each list shows one method only, they
+// cannot be compared with each other (the full scan sees folders the normal
+// scan cannot, which would look like growth), and pruning counts each
+// method separately so full scans never push out normal ones.
+func TestSnapshotMethodsAreSeparate(t *testing.T) {
+	s := openTest(t)
+	tree := scanFixture(t, map[string]int{"a/b.bin": 100_000})
+	opts := testOpts()
+	opts.Keep = 2
+	walk, err := s.Save(tree, time.Second, MethodWalk, opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var full []int64
+	for range 3 {
+		id, err := s.Save(tree, time.Second, MethodMFT, opts)
+		if err != nil {
+			t.Fatal(err)
+		}
+		full = append(full, id)
+	}
+
+	w, _ := s.Snapshots(tree.Path(), MethodWalk)
+	if len(w) != 1 || w[0].ID != walk || w[0].Method != MethodWalk {
+		t.Errorf("normal scans = %+v, want only %d", w, walk)
+	}
+	f, _ := s.Snapshots(tree.Path(), MethodMFT)
+	if len(f) != 2 || f[0].ID != full[2] || f[1].ID != full[1] || f[0].Method != MethodMFT {
+		t.Errorf("full scans = %+v, want the newest 2 of %v", f, full)
+	}
+	if _, err := s.Compare(walk, full[2], ""); err == nil {
+		t.Error("compared a normal scan with a full scan")
+	}
+	if _, err := s.Hotspots(walk, full[2], 1, 10); err == nil {
+		t.Error("hotspots across scan methods")
+	}
+	if _, err := s.Compare(full[1], full[2], ""); err != nil {
+		t.Errorf("two full scans: %v", err)
+	}
+	if _, err := s.Save(tree, time.Second, "guess", opts); err == nil {
+		t.Error("unknown method accepted")
+	}
 }

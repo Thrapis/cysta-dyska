@@ -22,3 +22,6 @@ func RunElevated(string, []string) (int, error) { return 0, errUnsupported }
 
 // LaunchUninstaller is only supported on Windows.
 func LaunchUninstaller(string) error { return errUnsupported }
+
+// RunSelfElevated is only supported on Windows.
+func RunSelfElevated([]string) (int, error) { return 0, errUnsupported }

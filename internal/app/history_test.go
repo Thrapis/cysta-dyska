@@ -1,9 +1,11 @@
 package app
 
 import (
+	"context"
 	"path/filepath"
 	"testing"
 
+	"cysta-dyska/internal/scan"
 	"cysta-dyska/internal/store"
 )
 
@@ -129,5 +131,38 @@ func TestTreemap(t *testing.T) {
 	}
 	if _, err := a.Treemap(filepath.Join(root, "missing"), 100, 100); err == nil {
 		t.Error("treemap of a missing folder should fail")
+	}
+}
+
+// Proves: a full scan is saved as such and History shows only snapshots of
+// the same method as the scan on screen, so switching between full and
+// normal scans never shows fake growth.
+func TestHistoryKeepsScanMethodsApart(t *testing.T) {
+	a, em := newHistoryApp(t)
+	root := t.TempDir()
+	writeFiles(t, root, map[string]int{"a/blob.bin": 100_000})
+	scanAndWait(t, a, em, root)
+
+	// The fake full scan returns a tree of the same folder, standing in for
+	// the drive the helper would read.
+	a.fastScan = func(ctx context.Context, _ string) (*scan.Node, error) {
+		return scan.Scan(ctx, root, scan.Options{})
+	}
+	if err := a.StartFastScan("C:"); err != nil {
+		t.Fatal(err)
+	}
+	em.wait(t)
+	h, err := a.History()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if h.Method != store.MethodMFT || len(h.Snapshots) != 1 || h.Snapshots[0].ID != h.CurrentID {
+		t.Fatalf("after a full scan: %+v", h)
+	}
+
+	scanAndWait(t, a, em, root)
+	h, _ = a.History()
+	if h.Method != store.MethodWalk || len(h.Snapshots) != 2 {
+		t.Fatalf("after a normal scan: %+v, want the 2 normal scans only", h)
 	}
 }

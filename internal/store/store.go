@@ -42,7 +42,15 @@ type Snapshot struct {
 	Dirs     int64
 	Duration time.Duration
 	MinAlloc int64
+	Method   string // MethodWalk or MethodMFT
 }
+
+// Scan methods. A full (MFT) scan also counts folders the normal scan cannot
+// read, so snapshots are only compared with snapshots of the same method.
+const (
+	MethodWalk = "walk"
+	MethodMFT  = "mft"
+)
 
 // DiffRow is one entry compared between two snapshots. An entry that was
 // not stored in a snapshot (absent, or smaller than its MinAlloc) has
@@ -115,6 +123,8 @@ CREATE TABLE actions (
 	detail       TEXT    NOT NULL
 );
 `,
+	// v3: how each snapshot was made. Everything before was a normal scan.
+	`ALTER TABLE snapshots ADD COLUMN method TEXT NOT NULL DEFAULT 'walk';`,
 }
 
 // DefaultPath is %LOCALAPPDATA%\CystaDyska\history.db on Windows. Local, not
@@ -183,9 +193,12 @@ func (s *Store) migrate() error {
 
 func rootKey(root string) string { return strings.ToLower(filepath.Clean(root)) }
 
-// Save stores a snapshot of tree in one transaction and prunes old
-// snapshots of the same root.
-func (s *Store) Save(tree *scan.Node, took time.Duration, opts Options) (int64, error) {
+// Save stores a snapshot of tree, made by method, in one transaction and
+// prunes old snapshots of the same root and method.
+func (s *Store) Save(tree *scan.Node, took time.Duration, method string, opts Options) (int64, error) {
+	if method != MethodWalk && method != MethodMFT {
+		return 0, fmt.Errorf("unknown scan method %q", method)
+	}
 	rows := Select(tree, opts.MinAlloc, opts.MaxDepth)
 	root := tree.Path()
 
@@ -196,10 +209,10 @@ func (s *Store) Save(tree *scan.Node, took time.Duration, opts Options) (int64, 
 	defer tx.Rollback()
 
 	res, err := tx.Exec(`INSERT INTO snapshots
-		(root, root_key, taken_at, alloc, size, files, dirs, duration_ms, min_alloc, max_depth)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		(root, root_key, taken_at, alloc, size, files, dirs, duration_ms, min_alloc, max_depth, method)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		root, rootKey(root), s.now().UTC().UnixMilli(), tree.Alloc, tree.Size, tree.Files, tree.Dirs,
-		took.Milliseconds(), opts.MinAlloc, opts.MaxDepth)
+		took.Milliseconds(), opts.MinAlloc, opts.MaxDepth, method)
 	if err != nil {
 		return 0, err
 	}
@@ -221,19 +234,19 @@ func (s *Store) Save(tree *scan.Node, took time.Duration, opts Options) (int64, 
 	}
 
 	if opts.Keep > 0 {
-		if _, err := tx.Exec(`DELETE FROM snapshots WHERE root_key = ? AND id NOT IN (
-			SELECT id FROM snapshots WHERE root_key = ? ORDER BY taken_at DESC, id DESC LIMIT ?)`,
-			rootKey(root), rootKey(root), opts.Keep); err != nil {
+		if _, err := tx.Exec(`DELETE FROM snapshots WHERE root_key = ? AND method = ? AND id NOT IN (
+			SELECT id FROM snapshots WHERE root_key = ? AND method = ? ORDER BY taken_at DESC, id DESC LIMIT ?)`,
+			rootKey(root), method, rootKey(root), method, opts.Keep); err != nil {
 			return 0, err
 		}
 	}
 	return id, tx.Commit()
 }
 
-// Snapshots lists the snapshots of root, newest first.
-func (s *Store) Snapshots(root string) ([]Snapshot, error) {
-	rows, err := s.db.Query(`SELECT id, root, taken_at, alloc, size, files, dirs, duration_ms, min_alloc
-		FROM snapshots WHERE root_key = ? ORDER BY taken_at DESC, id DESC`, rootKey(root))
+// Snapshots lists the snapshots of root made by method, newest first.
+func (s *Store) Snapshots(root, method string) ([]Snapshot, error) {
+	rows, err := s.db.Query(`SELECT id, root, taken_at, alloc, size, files, dirs, duration_ms, min_alloc, method
+		FROM snapshots WHERE root_key = ? AND method = ? ORDER BY taken_at DESC, id DESC`, rootKey(root), method)
 	if err != nil {
 		return nil, err
 	}
@@ -242,7 +255,7 @@ func (s *Store) Snapshots(root string) ([]Snapshot, error) {
 	for rows.Next() {
 		var sn Snapshot
 		var taken, ms int64
-		if err := rows.Scan(&sn.ID, &sn.Root, &taken, &sn.Alloc, &sn.Size, &sn.Files, &sn.Dirs, &ms, &sn.MinAlloc); err != nil {
+		if err := rows.Scan(&sn.ID, &sn.Root, &taken, &sn.Alloc, &sn.Size, &sn.Files, &sn.Dirs, &ms, &sn.MinAlloc, &sn.Method); err != nil {
 			return nil, err
 		}
 		sn.TakenAt = time.UnixMilli(taken)
@@ -252,11 +265,12 @@ func (s *Store) Snapshots(root string) ([]Snapshot, error) {
 	return out, rows.Err()
 }
 
-// sameRoot fails unless both snapshots exist and are of the same folder.
+// sameRoot fails unless both snapshots exist, are of the same folder and
+// were made by the same scan method.
 func (s *Store) sameRoot(a, b int64) error {
-	var found, roots int
-	err := s.db.QueryRow(`SELECT COUNT(*), COUNT(DISTINCT root_key) FROM snapshots WHERE id IN (?, ?)`, a, b).
-		Scan(&found, &roots)
+	var found, roots, methods int
+	err := s.db.QueryRow(`SELECT COUNT(*), COUNT(DISTINCT root_key), COUNT(DISTINCT method)
+		FROM snapshots WHERE id IN (?, ?)`, a, b).Scan(&found, &roots, &methods)
 	if err != nil {
 		return err
 	}
@@ -269,6 +283,9 @@ func (s *Store) sameRoot(a, b int64) error {
 	}
 	if roots != 1 {
 		return errors.New("snapshots are of different folders")
+	}
+	if methods != 1 {
+		return errors.New("a full scan cannot be compared with a normal scan")
 	}
 	return nil
 }

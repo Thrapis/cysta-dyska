@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { FolderOpen, HardDrive, Loader2, ShieldCheck, Square } from 'lucide-react'
+import { FolderOpen, HardDrive, Loader2, ShieldCheck, Square, ShieldAlert } from 'lucide-react'
 import { PickFolder } from '../wailsjs/go/main/Shell'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { CulpritsView } from '@/features/culprits/CulpritsView'
 import { HistoryView } from '@/features/history/HistoryView'
@@ -22,6 +23,8 @@ export default function App() {
   // Bumped when settings change, so views that depend on them reload.
   const [settingsVersion, setSettingsVersion] = useState(0)
   const scanning = state.status === 'scanning'
+  // The full scan reads a whole drive's file table, so it is offered for drive roots only.
+  const isDrive = /^[A-Za-z]:\\?$/.test(folder)
 
   const pick = async () => {
     const path = await PickFolder()
@@ -65,9 +68,16 @@ export default function App() {
             <Square /> {t('cancel')}
           </Button>
         ) : (
-          <Button onClick={() => start(folder)} disabled={!folder}>
-            {state.status === 'done' ? t('rescan') : t('scan')}
-          </Button>
+          <>
+            {isDrive && (
+              <Button variant="outline" onClick={() => start(folder, true)} title={t('fullScanHint')}>
+                <ShieldAlert /> {t('fullScan')}
+              </Button>
+            )}
+            <Button onClick={() => start(folder)} disabled={!folder}>
+              {state.status === 'done' ? t('rescan') : t('scan')}
+            </Button>
+          </>
         )}
       </div>
 
@@ -83,19 +93,29 @@ export default function App() {
               <TabsTrigger value="activity">{t('tabActivity')}</TabsTrigger>
             </TabsList>
             <TabsContent value="culprits" className="pt-3">
-              <CulpritsView scanId={state.scanId} refresh={settingsVersion} />
+              <ErrorBoundary key={state.scanId}>
+                <CulpritsView scanId={state.scanId} refresh={settingsVersion} />
+              </ErrorBoundary>
             </TabsContent>
             <TabsContent value="folders" className="pt-3">
-              <SizeTree root={state.root} scanId={state.scanId} />
+              <ErrorBoundary key={state.scanId}>
+                <SizeTree root={state.root} scanId={state.scanId} />
+              </ErrorBoundary>
             </TabsContent>
             <TabsContent value="map" className="pt-3">
-              <TreemapView key={state.scanId} root={state.root} scanId={state.scanId} />
+              <ErrorBoundary key={state.scanId}>
+                <TreemapView key={state.scanId} root={state.root} scanId={state.scanId} />
+              </ErrorBoundary>
             </TabsContent>
             <TabsContent value="history" className="pt-3">
-              <HistoryView scanId={state.scanId} />
+              <ErrorBoundary key={state.scanId}>
+                <HistoryView scanId={state.scanId} />
+              </ErrorBoundary>
             </TabsContent>
             <TabsContent value="activity" className="pt-3">
-              <ActivityView refresh={settingsVersion} />
+              <ErrorBoundary key={state.scanId}>
+                <ActivityView refresh={settingsVersion} />
+              </ErrorBoundary>
             </TabsContent>
           </Tabs>
         )}
@@ -123,7 +143,7 @@ function Status({ state }: { state: ScanState }) {
         <Card className="mb-4">
           <CardContent className="space-y-2">
             <div className="flex items-center gap-2 font-medium">
-              <Loader2 className="size-4 animate-spin" /> {t('scanning')}
+              <Loader2 className="size-4 animate-spin" /> {t(state.fast ? 'fullScanning' : 'scanning')}
             </div>
             {p && (
               <>
@@ -153,6 +173,8 @@ function Status({ state }: { state: ScanState }) {
           })}
         </p>
       )
+    case 'declined':
+      return <p className="mb-3 text-sm text-muted-foreground">{t('fullScanDeclined')}</p>
     case 'cancelled':
       return <p className="mb-3 text-sm text-muted-foreground">{t('cancelled')}</p>
     case 'error':

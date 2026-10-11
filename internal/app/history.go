@@ -26,7 +26,8 @@ type SnapshotDTO struct {
 
 // HistoryDTO lists the saved scans of the current folder.
 type HistoryDTO struct {
-	Snapshots  []SnapshotDTO `json:"snapshots"`  // newest first
+	Snapshots  []SnapshotDTO `json:"snapshots"`  // newest first, same method as the current scan
+	Method     string        `json:"method"`     // "walk" (normal scan) or "mft" (full scan)
 	CurrentID  int64         `json:"currentId"`  // the scan on screen; 0 if not saved
 	MinAlloc   int64         `json:"minAlloc"`   // smaller entries are not stored
 	HotspotMin int64         `json:"hotspotMin"` // smallest change listed as a hotspot
@@ -63,11 +64,11 @@ type TileDTO struct {
 
 // saveHistory stores a finished scan. Failure only loses history, never the
 // scan, so it is reported as a warning.
-func (a *App) saveHistory(tree *scan.Node, took time.Duration) (id int64, warning string) {
+func (a *App) saveHistory(tree *scan.Node, took time.Duration, method string) (id int64, warning string) {
 	if a.history == nil {
 		return 0, "history is not available"
 	}
-	id, err := a.history.Save(tree, took, a.historyOpts)
+	id, err := a.history.Save(tree, took, method, a.historyOpts)
 	if err != nil {
 		return 0, "could not save this scan to history: " + err.Error()
 	}
@@ -77,19 +78,19 @@ func (a *App) saveHistory(tree *scan.Node, took time.Duration) (id int64, warnin
 // History lists the saved scans of the folder currently on screen.
 func (a *App) History() (HistoryDTO, error) {
 	a.mu.Lock()
-	tree, id, warning := a.tree, a.snapshotID, a.historyWarning
+	tree, id, warning, method := a.tree, a.snapshotID, a.historyWarning, a.method
 	a.mu.Unlock()
 	if tree == nil {
 		return HistoryDTO{}, errors.New("no scan results yet")
 	}
 	h := HistoryDTO{
-		Snapshots: []SnapshotDTO{}, CurrentID: id, MinAlloc: a.historyOpts.MinAlloc,
+		Snapshots: []SnapshotDTO{}, Method: method, CurrentID: id, MinAlloc: a.historyOpts.MinAlloc,
 		HotspotMin: a.hotspotMinDelta, Warning: warning,
 	}
 	if a.history == nil {
 		return h, nil
 	}
-	list, err := a.history.Snapshots(tree.Path())
+	list, err := a.history.Snapshots(tree.Path(), method)
 	if err != nil {
 		h.Warning = err.Error()
 		return h, nil

@@ -9,5 +9,12 @@
   "author": {
     "name": "Thrapis",
     "email": "artbelski@gmail.com"
+  },
+  "info": {
+    "companyName": "Thrapis",
+    "productName": "Čysta Dyska",
+    "productVersion": "0.6.0",
+    "copyright": "© 2026 Thrapis",
+    "comments": "Finds what uses disk space and helps clean it up safely."
   }
 }

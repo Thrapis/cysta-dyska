@@ -5,11 +5,16 @@ package app
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
+	"regexp"
+	"strings"
 	"sync"
 	"time"
 
+	"cysta-dyska/internal/actions"
 	"cysta-dyska/internal/attribute"
+	"cysta-dyska/internal/fastscan"
 	"cysta-dyska/internal/scan"
 	"cysta-dyska/internal/sources/locations"
 	"cysta-dyska/internal/sources/registry"
@@ -22,6 +27,7 @@ const (
 	EventDone      = "scan:done"
 	EventError     = "scan:error"
 	EventCancelled = "scan:cancelled"
+	EventDeclined  = "scan:declined" // the UAC prompt for a fast scan was declined
 )
 
 // maxChildren caps how many entries Children returns for one directory; the
@@ -71,6 +77,8 @@ type App struct {
 	historyOpts     store.Options
 	hotspotMinDelta int64
 
+	fastScan func(ctx context.Context, drive string) (*scan.Node, error) // replaced in tests
+
 	exec     executors  // do the actual cleanup work; replaced in tests
 	actionMu sync.Mutex // one action at a time
 
@@ -79,6 +87,7 @@ type App struct {
 	tree           *scan.Node         // last completed scan
 	culprits       *CulpritsDTO       // attribution of tree
 	snapshotID     int64              // history id of tree; 0 if not saved
+	method         string             // store.MethodWalk or store.MethodMFT: how tree was made
 	historyWarning string
 	findings       []attribute.Finding // behind culprits.Items, same order
 	vars           locations.Vars      // this machine's folders at scan time
@@ -91,13 +100,37 @@ func New(emit Emitter, history *store.Store) *App {
 	return &App{
 		emit: emit, getenv: os.Getenv, installedApps: registry.Installed,
 		history: history, historyOpts: store.DefaultOptions, hotspotMinDelta: defaultHotspotMinDelta,
-		exec: defaultExecutors(),
+		exec: defaultExecutors(), fastScan: fastscan.Run,
 	}
 }
 
 // StartScan begins scanning root in the background. Results arrive as
 // events; it returns an error only if a scan is already running.
 func (a *App) StartScan(root string) error {
+	return a.start(store.MethodWalk, func(ctx context.Context, progress func(scan.Progress)) (*scan.Node, error) {
+		return scan.Scan(ctx, root, scan.Options{OnProgress: progress})
+	})
+}
+
+var driveRootRe = regexp.MustCompile(`^([A-Za-z]:)\\?$`)
+
+// StartFastScan scans a whole drive (e.g. `C:\`) by reading its master file
+// table in an elevated helper; Windows shows a UAC prompt first. Results
+// arrive as for StartScan; a declined prompt sends EventDeclined.
+func (a *App) StartFastScan(drive string) error {
+	m := driveRootRe.FindStringSubmatch(drive)
+	if m == nil {
+		return fmt.Errorf("the fast scan works on whole drives, not %q", drive)
+	}
+	d := strings.ToUpper(m[1])
+	return a.start(store.MethodMFT, func(ctx context.Context, _ func(scan.Progress)) (*scan.Node, error) {
+		return a.fastScan(ctx, d)
+	})
+}
+
+type scanFunc func(ctx context.Context, progress func(scan.Progress)) (*scan.Node, error)
+
+func (a *App) start(method string, do scanFunc) error {
 	a.mu.Lock()
 	if a.cancel != nil {
 		a.mu.Unlock()
@@ -107,19 +140,19 @@ func (a *App) StartScan(root string) error {
 	a.cancel = cancel
 	a.mu.Unlock()
 
-	go a.run(ctx, root)
+	go a.run(ctx, method, do)
 	return nil
 }
 
-func (a *App) run(ctx context.Context, root string) {
+func (a *App) run(ctx context.Context, method string, do scanFunc) {
 	start := time.Now()
 	// The scanner already paces progress reports (about 10 per second).
-	tree, err := scan.Scan(ctx, root, scan.Options{OnProgress: func(p scan.Progress) {
+	tree, err := do(ctx, func(p scan.Progress) {
 		a.emit.Emit(EventProgress, ProgressDTO{
 			Files: p.Files, Dirs: p.Dirs, Bytes: p.Bytes, Errors: p.Errors,
 			Path: p.Path, Elapsed: time.Since(start).Milliseconds(),
 		})
-	}})
+	})
 
 	took := time.Since(start)
 	var culprits CulpritsDTO
@@ -128,8 +161,8 @@ func (a *App) run(ctx context.Context, root string) {
 	var snapshotID int64
 	var historyWarning string
 	if err == nil {
-		culprits, findings, vars = a.attribute(tree)           // ~0.2 s for a full drive
-		snapshotID, historyWarning = a.saveHistory(tree, took) // ~10k rows for a full drive
+		culprits, findings, vars = a.attribute(tree)                   // ~0.2 s for a full drive
+		snapshotID, historyWarning = a.saveHistory(tree, took, method) // ~10k rows for a full drive
 	}
 
 	a.mu.Lock()
@@ -139,13 +172,15 @@ func (a *App) run(ctx context.Context, root string) {
 		a.culprits = &culprits
 		a.findings, a.vars = findings, vars
 		a.plans = nil // plans refer to the previous scan
-		a.snapshotID, a.historyWarning = snapshotID, historyWarning
+		a.snapshotID, a.historyWarning, a.method = snapshotID, historyWarning, method
 	}
 	a.mu.Unlock()
 
 	switch {
 	case errors.Is(err, context.Canceled):
 		a.emit.Emit(EventCancelled, nil)
+	case errors.Is(err, actions.ErrDeclined):
+		a.emit.Emit(EventDeclined, nil)
 	case err != nil:
 		a.emit.Emit(EventError, err.Error())
 	default:

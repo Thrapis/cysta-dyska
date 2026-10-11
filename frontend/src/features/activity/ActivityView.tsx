@@ -33,7 +33,9 @@ export function ActivityView({ refresh }: { refresh: number }) {
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-medium">{e.owner}</span>
             <span className="text-muted-foreground">{t(`kind_${e.kind}` as MessageKey)}</span>
-            <Badge variant={e.outcome === 'done' ? 'secondary' : 'outline'}>{e.outcome}</Badge>
+            <Badge variant={e.outcome === 'done' ? 'secondary' : e.outcome === 'interrupted' ? 'destructive' : 'outline'}>
+              {t(`state_${e.outcome}` as MessageKey)}
+            </Badge>
             {e.outcome === 'done' && e.bytesBefore > e.bytesAfter && (
               <span className="text-emerald-600 dark:text-emerald-400">
                 {t(e.kind === 'recycle' ? 'activityRecycled' : 'activityFreed', {
@@ -46,7 +48,8 @@ export function ActivityView({ refresh }: { refresh: number }) {
           <code className="mt-1 block truncate text-xs" title={e.target}>
             {e.command || e.target}
           </code>
-          {e.detail && (
+          {e.outcome === 'interrupted' && <p className="mt-1 text-xs text-destructive">{t('activityInterrupted')}</p>}
+          {e.detail && e.outcome !== 'interrupted' && (
             <details>
               <summary className="cursor-pointer text-xs text-muted-foreground">{t('showOutput')}</summary>
               <pre className="mt-1 max-h-40 overflow-auto rounded bg-muted p-2 text-xs whitespace-pre-wrap">{e.detail}</pre>

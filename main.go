@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"embed"
+	"os"
 	"os/exec"
 
 	"github.com/wailsapp/wails/v2"
@@ -11,6 +12,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"cysta-dyska/internal/app"
+	"cysta-dyska/internal/fastscan"
 	"cysta-dyska/internal/store"
 )
 
@@ -61,6 +63,12 @@ func start(cmd *exec.Cmd) error {
 }
 
 func main() {
+	// The elevated fast-scan helper: read the MFT, write the result, exit.
+	// It must not open a window or take the single-instance lock.
+	if fastscan.IsHelperCall(os.Args) {
+		os.Exit(fastscan.RunHelper(os.Args[2:]))
+	}
+
 	emitter := &wailsEmitter{}
 	shell := &Shell{}
 	history := openHistory()
@@ -75,9 +83,27 @@ func main() {
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},
+		// One window only: two would share the history database and could
+		// act on the same folders at once.
+		SingleInstanceLock: &options.SingleInstanceLock{
+			UniqueId: "cysta-dyska-6f1c2a0e",
+			OnSecondInstanceLaunch: func(options.SecondInstanceData) {
+				if emitter.ctx != nil {
+					runtime.WindowUnminimise(emitter.ctx)
+					runtime.Show(emitter.ctx)
+				}
+			},
+		},
 		OnStartup: func(ctx context.Context) {
 			emitter.ctx = ctx
 			shell.ctx = ctx
+			// Runs only in the instance holding the lock, so a "running"
+			// log entry was left by a run that ended mid-action.
+			if history != nil {
+				if _, err := history.MarkInterrupted(); err != nil {
+					println("action log:", err.Error())
+				}
+			}
 		},
 		OnShutdown: func(context.Context) {
 			if history != nil {

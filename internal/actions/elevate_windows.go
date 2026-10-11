@@ -3,6 +3,7 @@ package actions
 import (
 	"errors"
 	"fmt"
+	"os"
 	"os/exec"
 	"runtime"
 	"syscall"
@@ -112,4 +113,15 @@ func LaunchUninstaller(uninstallString string) error {
 	}
 	_, err = shellExecute("open", file, params, false)
 	return err
+}
+
+// RunSelfElevated runs this program again as administrator with args, after
+// the UAC prompt, waits, and returns its exit code. Used for the fast scan
+// helper, which only reads.
+func RunSelfElevated(args []string) (int, error) {
+	exe, err := os.Executable()
+	if err != nil {
+		return 0, err
+	}
+	return shellExecute("runas", exe, windows.ComposeCommandLine(args), true)
 }

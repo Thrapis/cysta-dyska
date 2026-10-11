@@ -222,6 +222,7 @@ export namespace app {
 	}
 	export class HistoryDTO {
 	    snapshots: SnapshotDTO[];
+	    method: string;
 	    currentId: number;
 	    minAlloc: number;
 	    hotspotMin: number;
@@ -234,6 +235,7 @@ export namespace app {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.snapshots = this.convertValues(source["snapshots"], SnapshotDTO);
+	        this.method = source["method"];
 	        this.currentId = source["currentId"];
 	        this.minAlloc = source["minAlloc"];
 	        this.hotspotMin = source["hotspotMin"];

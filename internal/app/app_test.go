@@ -23,7 +23,7 @@ func (f *fakeEmitter) Emit(name string, data any) {
 	f.events = append(f.events, name)
 	f.data = append(f.data, data)
 	f.mu.Unlock()
-	if name == EventDone || name == EventError || name == EventCancelled {
+	if name == EventDone || name == EventError || name == EventCancelled || name == EventDeclined {
 		f.done <- struct{}{}
 	}
 }

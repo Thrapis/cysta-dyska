@@ -336,3 +336,20 @@ func TestPlanRefusals(t *testing.T) {
 		}
 	}
 }
+
+// Proves (regression): a scan in which nothing is explained sends an empty
+// culprits list, not JSON null, which would crash the Culprits view.
+func TestEmptyCulpritsAreNotNull(t *testing.T) {
+	a, em, _, root := newActionApp(t, nil)
+	writeFiles(t, root, map[string]int{"home/Documents/notes.txt": 1000})
+	scanAndWait(t, a, em, root)
+
+	res, err := a.Culprits()
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, _ := json.Marshal(res)
+	if strings.Contains(string(raw), `"items":null`) {
+		t.Errorf("culprits JSON has a null items list: %s", raw)
+	}
+}

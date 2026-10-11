@@ -147,6 +147,22 @@ export const en = {
   activityEmpty: 'Nothing has been done yet.',
   activityFreed: 'freed {size}',
   activityRecycled: '{size} moved to the Recycle Bin',
+  fullScan: 'Full scan (admin)',
+  fullScanHint: 'Reads the whole drive, including folders a normal scan cannot open (Windows, other users, app packages). Asks for administrator permission and only reads. Full scans keep their own history.',
+  fullScanning: 'Full scan: reading the drive’s file table as administrator. Confirm the Windows prompt if it appears…',
+  fullScanDeclined: 'Administrator permission was not given, so nothing was scanned. Use Scan for a normal scan.',
+  historyMethod_walk: 'Normal scans are compared only with normal scans; full scans keep their own history.',
+  historyMethod_mft: 'Full scans are compared only with full scans: they also count folders a normal scan cannot open.',
+  state_running: 'running',
+  state_done: 'done',
+  state_failed: 'failed',
+  state_declined: 'not allowed',
+  state_started: 'started',
+  state_interrupted: 'interrupted',
+  activityInterrupted: 'The app closed before this finished. Part of it may have been done — scan again to see what is left.',
+  crashTitle: 'Something went wrong in this view.',
+  crashBody: 'Nothing was changed on disk. You can try again; if it keeps happening, restart the app.',
+  crashRetry: 'Try again',
 } as const
 
 export type Messages = { [K in keyof typeof en]: string }

@@ -115,7 +115,7 @@ func (a *App) Culprits() (CulpritsDTO, error) {
 
 	allowDelete := a.allowPermanentDelete()
 	guard := actions.NewGuard(vars)
-	res.Items = append([]CulpritDTO(nil), res.Items...)
+	res.Items = append(make([]CulpritDTO, 0, len(res.Items)), res.Items...)
 	for i := range res.Items {
 		if i < len(findings) {
 			res.Items[i].Actions = actionOptions(findings[i], guard, allowDelete)

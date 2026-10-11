@@ -17,7 +17,7 @@ type ActionRecord struct {
 	Command     string // what was run, as shown to the user
 	BytesBefore int64
 	BytesAfter  int64
-	Outcome     string // running, done, failed, declined
+	Outcome     string // running, done, failed, declined, started, interrupted
 	Detail      string // error or the end of the command's output
 }
 
@@ -45,6 +45,20 @@ func (s *Store) FinishAction(id int64, outcome, detail string, bytesAfter int64)
 		return errors.New("action not found")
 	}
 	return nil
+}
+
+// MarkInterrupted marks actions still logged as running as interrupted. Call
+// it once at startup, when this process holds the single-instance lock: a
+// running entry then means the previous run ended in the middle of an
+// action, so it may have finished only part of the work.
+func (s *Store) MarkInterrupted() (int64, error) {
+	res, err := s.db.Exec(`UPDATE actions SET outcome = 'interrupted',
+		detail = 'The app closed before this finished. Some of it may have been done; scan again to see.'
+		WHERE outcome = 'running'`)
+	if err != nil {
+		return 0, err
+	}
+	return res.RowsAffected()
 }
 
 // Actions returns the newest log entries first.
