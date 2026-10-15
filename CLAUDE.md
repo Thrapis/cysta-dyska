@@ -120,4 +120,6 @@ Milestones M1–M6 are done (scan, on-disk sizes, attribution, history/treemap, 
 MFT fast scan, crash recovery, per-user installer, optional signing). Code signing is prepared but
 unused: the release is unsigned until a certificate is chosen. Version is set in `wails.json`.
 M7 (macOS scan + explain) is code-complete but unverified on a Mac; no dmg, signing or notarization.
+`.github/workflows/macos.yml` builds the unsigned `.app` and runs the darwin-only tests on a macOS
+runner; it has never run (no GitHub repository exists yet), so expect to fix it on first use.
 `TestScanSkipsAccessDeniedFolder` (internal/scan) fails on the dev machine at HEAD, unrelated to M7.

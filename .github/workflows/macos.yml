@@ -1,0 +1,51 @@
+name: macOS
+
+# Builds the app on a real Mac runner and runs the tests that only compile on
+# darwin (readdir_darwin_test.go, shell_darwin_test.go). The .app is unsigned.
+on:
+  push:
+    branches: [main, 'm*-*']
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Frontend (embedded by main.go, so it must exist before go vet)
+        working-directory: frontend
+        run: |
+          npm ci
+          npx tsc -b
+          npm run lint
+          npm run build
+
+      - name: Vet and test
+        run: |
+          go vet ./...
+          go test -race -count=1 ./...
+
+      - name: Build app
+        run: |
+          go install github.com/wailsapp/wails/v2/cmd/wails@v2.16.0
+          wails build -platform darwin/universal -skipbindings
+
+      - name: Zip app
+        run: ditto -c -k --keepParent build/bin/cysta-dyska.app build/bin/cysta-dyska-macos.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cysta-dyska-macos
+          path: build/bin/cysta-dyska-macos.zip
