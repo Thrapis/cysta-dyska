@@ -7,15 +7,19 @@ import (
 	"bufio"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 )
 
 // Known lists every name Resolve can produce. Rules may reference only
-// these, as {NAME}.
+// these, as {NAME}. Windows rules use the Windows folders and macOS rules
+// the macOS ones; a name that does not resolve on this OS skips the rule.
 var Known = []string{
 	// Windows folders
 	"USERPROFILE", "LOCALAPPDATA", "APPDATA", "PROGRAMDATA", "PROGRAMFILES",
 	"PROGRAMFILESX86", "SYSTEMROOT", "SYSTEMDRIVE", "TEMP",
+	// macOS folders
+	"HOME", "LIBRARY", "CACHES", "APPSUPPORT", "APPLICATIONS", "TMPDIR",
 	// Developer tools
 	"GOPATH", "GOMODCACHE", "GOCACHE", "NPM_CACHE", "PNPM_STORE", "YARN_CACHE",
 	"PIP_CACHE", "UV_CACHE", "CARGO_HOME", "RUSTUP_HOME", "GRADLE_HOME",
@@ -25,8 +29,11 @@ var Known = []string{
 // Vars maps a known name to an absolute path. Unresolvable names are absent.
 type Vars map[string]string
 
-// Resolve computes all known locations. getenv is os.Getenv in production.
-func Resolve(getenv func(string) string) Vars {
+// Resolve computes all known locations for the running OS. getenv is
+// os.Getenv in production.
+func Resolve(getenv func(string) string) Vars { return resolve(getenv, runtime.GOOS) }
+
+func resolve(getenv func(string) string, goos string) Vars {
 	v := Vars{}
 	set := func(name, path string) {
 		if path != "" && filepath.IsAbs(path) {
@@ -48,23 +55,55 @@ func Resolve(getenv func(string) string) Vars {
 		return filepath.Join(append([]string{base}, elem...)...)
 	}
 
-	home := getenv("USERPROFILE")
-	local := getenv("LOCALAPPDATA")
-	roaming := getenv("APPDATA")
-	set("USERPROFILE", home)
-	set("LOCALAPPDATA", local)
-	set("APPDATA", roaming)
-	set("PROGRAMDATA", getenv("ProgramData"))
-	set("PROGRAMFILES", getenv("ProgramFiles"))
-	set("PROGRAMFILESX86", getenv("ProgramFiles(x86)"))
-	set("SYSTEMROOT", getenv("SystemRoot"))
-	set("TEMP", getenv("TEMP"))
-	if d := getenv("SystemDrive"); d != "" {
-		set("SYSTEMDRIVE", d+`\`) // "C:" alone would mean "current dir on C:"
+	// Per-OS base folders and the default location of each tool's cache.
+	var home, local, roaming string // local/roaming are the Windows AppData folders
+	var goConfig, goBuild, npmCache, pnpmStore, yarnCache, pipCache, uvCache, androidSDK string
+	if goos == "darwin" {
+		home = getenv("HOME")
+		library := under(home, "Library")
+		caches := under(library, "Caches")
+		support := under(library, "Application Support")
+		set("HOME", home)
+		set("LIBRARY", library)
+		set("CACHES", caches)
+		set("APPSUPPORT", support)
+		set("APPLICATIONS", "/Applications")
+		set("TMPDIR", getenv("TMPDIR"))
+		goConfig = under(support, "go", "env")
+		goBuild = under(caches, "go-build")
+		npmCache = under(home, ".npm")
+		pnpmStore = under(library, "pnpm", "store")
+		yarnCache = under(caches, "Yarn")
+		pipCache = under(caches, "pip")
+		uvCache = under(home, ".cache", "uv")
+		androidSDK = under(library, "Android", "sdk")
+	} else {
+		home = getenv("USERPROFILE")
+		local = getenv("LOCALAPPDATA")
+		roaming = getenv("APPDATA")
+		set("USERPROFILE", home)
+		set("LOCALAPPDATA", local)
+		set("APPDATA", roaming)
+		set("PROGRAMDATA", getenv("ProgramData"))
+		set("PROGRAMFILES", getenv("ProgramFiles"))
+		set("PROGRAMFILESX86", getenv("ProgramFiles(x86)"))
+		set("SYSTEMROOT", getenv("SystemRoot"))
+		set("TEMP", getenv("TEMP"))
+		if d := getenv("SystemDrive"); d != "" {
+			set("SYSTEMDRIVE", d+`\`) // "C:" alone would mean "current dir on C:"
+		}
+		goConfig = under(roaming, "go", "env")
+		goBuild = under(local, "go-build")
+		npmCache = under(local, "npm-cache")
+		pnpmStore = under(local, "pnpm", "store")
+		yarnCache = under(local, "Yarn", "Cache")
+		pipCache = under(local, "pip", "Cache")
+		uvCache = under(local, "uv", "cache")
+		androidSDK = under(local, "Android", "Sdk")
 	}
 
 	// Go: environment, then the file written by `go env -w`, then defaults.
-	goenv := readKeyValues(first(getenv("GOENV"), under(roaming, "go", "env")), "=")
+	goenv := readKeyValues(first(getenv("GOENV"), goConfig), "=")
 	goVar := func(k string) string { return first(getenv(k), goenv[k]) }
 	gopath := first(goVar("GOPATH"), under(home, "go"))
 	if i := strings.IndexByte(gopath, filepath.ListSeparator); i >= 0 {
@@ -72,17 +111,17 @@ func Resolve(getenv func(string) string) Vars {
 	}
 	set("GOPATH", gopath)
 	set("GOMODCACHE", first(goVar("GOMODCACHE"), under(gopath, "pkg", "mod")))
-	set("GOCACHE", first(goVar("GOCACHE"), under(local, "go-build")))
+	set("GOCACHE", first(goVar("GOCACHE"), goBuild))
 
 	// JavaScript
 	npmrc := readKeyValues(under(home, ".npmrc"), "=")
-	set("NPM_CACHE", first(getenv("npm_config_cache"), npmrc["cache"], under(local, "npm-cache")))
-	set("PNPM_STORE", first(getenv("npm_config_store_dir"), under(local, "pnpm", "store")))
-	set("YARN_CACHE", first(getenv("YARN_CACHE_FOLDER"), under(local, "Yarn", "Cache")))
+	set("NPM_CACHE", first(getenv("npm_config_cache"), npmrc["cache"], npmCache))
+	set("PNPM_STORE", first(getenv("npm_config_store_dir"), pnpmStore))
+	set("YARN_CACHE", first(getenv("YARN_CACHE_FOLDER"), yarnCache))
 
 	// Python
-	set("PIP_CACHE", first(getenv("PIP_CACHE_DIR"), under(local, "pip", "Cache")))
-	set("UV_CACHE", first(getenv("UV_CACHE_DIR"), under(local, "uv", "cache")))
+	set("PIP_CACHE", first(getenv("PIP_CACHE_DIR"), pipCache))
+	set("UV_CACHE", first(getenv("UV_CACHE_DIR"), uvCache))
 
 	// Rust
 	set("CARGO_HOME", first(getenv("CARGO_HOME"), under(home, ".cargo")))
@@ -94,7 +133,7 @@ func Resolve(getenv func(string) string) Vars {
 	set("NUGET_PKGS", first(getenv("NUGET_PACKAGES"), under(home, ".nuget", "packages")))
 
 	// Android
-	set("ANDROID_SDK", first(getenv("ANDROID_HOME"), getenv("ANDROID_SDK_ROOT"), under(local, "Android", "Sdk")))
+	set("ANDROID_SDK", first(getenv("ANDROID_HOME"), getenv("ANDROID_SDK_ROOT"), androidSDK))
 	set("ANDROID_AVD", first(getenv("ANDROID_AVD_HOME"), under(home, ".android", "avd")))
 
 	return v

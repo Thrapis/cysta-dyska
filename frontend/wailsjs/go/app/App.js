@@ -34,6 +34,10 @@ export function PlanAction(arg1) {
   return window['go']['app']['App']['PlanAction'](arg1);
 }
 
+export function Platform() {
+  return window['go']['app']['App']['Platform']();
+}
+
 export function RunAction(arg1, arg2) {
   return window['go']['app']['App']['RunAction'](arg1, arg2);
 }

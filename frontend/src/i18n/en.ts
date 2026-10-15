@@ -52,6 +52,7 @@ export const en = {
   copied: 'Copied',
   copyTitle: 'Copy the command to run it yourself',
   reveal: 'Show in Explorer',
+  revealMac: 'Show in Finder',
   openSettings: 'Open Settings',
   allRisks: 'All',
 

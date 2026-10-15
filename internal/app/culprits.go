@@ -118,6 +118,10 @@ func (a *App) Culprits() (CulpritsDTO, error) {
 	res.Items = append(make([]CulpritDTO, 0, len(res.Items)), res.Items...)
 	for i := range res.Items {
 		if i < len(findings) {
+			if a.windowsOnly() != nil {
+				res.Items[i].Actions = []ActionOptionDTO{} // explain only off Windows
+				continue
+			}
 			res.Items[i].Actions = actionOptions(findings[i], guard, allowDelete)
 		}
 	}

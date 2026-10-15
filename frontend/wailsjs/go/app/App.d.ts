@@ -18,6 +18,8 @@ export function Hotspots(arg1:number,arg2:number):Promise<Array<app.DiffRowDTO>>
 
 export function PlanAction(arg1:app.ActionRequest):Promise<app.PlanDTO>;
 
+export function Platform():Promise<string>;
+
 export function RunAction(arg1:string,arg2:boolean):Promise<app.ActionResultDTO>;
 
 export function SetAllowPermanentDelete(arg1:boolean):Promise<void>;

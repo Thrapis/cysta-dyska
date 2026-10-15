@@ -1,0 +1,23 @@
+# Template rules the matcher requires. macOS has no installed-program registry
+# yet, so these are never filled in; they exist to keep the pack valid.
+version: 1
+rules:
+  - id: installed-app
+    template: true
+    category: installed-app
+    risk: review
+    explain:
+      en: "Application {owner}."
+      be: "Праграма {owner}."
+
+  - id: app-data
+    template: true
+    category: app-data
+    risk: review
+    explain:
+      en: "Data kept by {owner}: settings, caches, logs and sometimes your documents."
+      be: "Даныя {owner}: налады, кэш, журналы, а часам і вашы дакументы."
+    suggest:
+      - text:
+          en: "Look inside before acting. Prefer the program's own option to clear its cache."
+          be: "Спачатку зазірніце ўнутр. Лепш скарыстайцеся ўласнай функцыяй праграмы для ачысткі кэшу."

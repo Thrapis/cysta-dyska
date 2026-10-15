@@ -12,6 +12,7 @@ import (
 	"io/fs"
 	"path"
 	"regexp"
+	"runtime"
 	"slices"
 	"strings"
 
@@ -20,7 +21,7 @@ import (
 	"cysta-dyska/internal/sources/locations"
 )
 
-//go:embed rules/*.yaml
+//go:embed rules/*.yaml rules/macos/*.yaml
 var embedded embed.FS
 
 // Locales every text in the rule pack must provide.
@@ -136,8 +137,14 @@ type file struct {
 	Rules   []*Rule `yaml:"rules"`
 }
 
-// LoadEmbedded loads and validates the rule pack built into the binary.
-func LoadEmbedded() (*Pack, error) {
+// LoadEmbedded loads and validates the rule pack built into the binary for
+// the running OS: rules/macos on macOS, rules otherwise.
+func LoadEmbedded() (*Pack, error) { return loadEmbeddedFor(runtime.GOOS) }
+
+func loadEmbeddedFor(goos string) (*Pack, error) {
+	if goos == "darwin" {
+		return Load(embedded, "rules/macos")
+	}
 	return Load(embedded, "rules")
 }
 

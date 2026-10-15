@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -79,6 +80,8 @@ type App struct {
 
 	fastScan func(ctx context.Context, drive string) (*scan.Node, error) // replaced in tests
 
+	goos string // runtime.GOOS; replaced in tests
+
 	exec     executors  // do the actual cleanup work; replaced in tests
 	actionMu sync.Mutex // one action at a time
 
@@ -100,8 +103,23 @@ func New(emit Emitter, history *store.Store) *App {
 	return &App{
 		emit: emit, getenv: os.Getenv, installedApps: registry.Installed,
 		history: history, historyOpts: store.DefaultOptions, hotspotMinDelta: defaultHotspotMinDelta,
-		exec: defaultExecutors(), fastScan: fastscan.Run,
+		exec: defaultExecutors(), fastScan: fastscan.Run, goos: runtime.GOOS,
 	}
+}
+
+// Platform tells the frontend which OS it runs on ("windows", "darwin").
+func (a *App) Platform() string { return a.goos }
+
+// errWindowsOnly is returned for features that exist only on Windows. On
+// macOS the app explains and measures but never changes anything.
+var errWindowsOnly = errors.New("this is only available on Windows")
+
+// windowsOnly returns errWindowsOnly unless the app runs on Windows.
+func (a *App) windowsOnly() error {
+	if a.goos != "windows" {
+		return errWindowsOnly
+	}
+	return nil
 }
 
 // StartScan begins scanning root in the background. Results arrive as
@@ -118,6 +136,9 @@ var driveRootRe = regexp.MustCompile(`^([A-Za-z]:)\\?$`)
 // table in an elevated helper; Windows shows a UAC prompt first. Results
 // arrive as for StartScan; a declined prompt sends EventDeclined.
 func (a *App) StartFastScan(drive string) error {
+	if err := a.windowsOnly(); err != nil {
+		return err
+	}
 	m := driveRootRe.FindStringSubmatch(drive)
 	if m == nil {
 		return fmt.Errorf("the fast scan works on whole drives, not %q", drive)

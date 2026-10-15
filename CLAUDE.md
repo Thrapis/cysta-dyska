@@ -1,14 +1,17 @@
 # Čysta Dyska
 
 Windows desktop app that finds what uses disk space, explains who owns it, and offers safe ways
-to clean it up. Go backend + Wails v2 + React/Vite/shadcn frontend. Windows only (non-Windows
-builds compile via stubs so `go vet` works cross-platform).
+to clean it up. Go backend + Wails v2 + React/Vite/shadcn frontend. Windows is the supported
+platform. macOS (since M7) is **scan + explain only** and has never been run on a Mac: no
+cleanup actions, no Full scan, no installed-programs list. Other OSes compile via stubs so
+`go vet` works cross-platform.
 
 ## Commands
 
 ```bash
 go test -race -count=1 ./...                  # all Go tests (needs gcc for -race; MSYS2 is installed)
 go vet ./... && CGO_ENABLED=0 GOOS=linux go vet ./internal/...   # CGO_ENABLED=0 or cgo fails with MinGW
+CGO_ENABLED=0 GOOS=darwin go vet ./internal/... ./cmd/...        # macOS compile check (darwin tests only run on a Mac)
 cd frontend && npx tsc -b && npm run lint     # type check + oxlint
 wails build                                   # -> build/bin/cysta-dyska.exe
 wails dev -browser=false                      # live app; bindings also work in a browser at http://localhost:34115
@@ -41,8 +44,11 @@ go run ./cmd/cysta-scan -fast 'C:\'          # "Full scan" (MFT) through the UAC
   the raw volume reader; `scan.Build` turns its flat list into a normal scan tree.
 - `internal/fastscan` – runs the MFT read in an elevated copy of the app and exchanges the result
   through a file in `%LOCALAPPDATA%\CystaDyska\fastscan`.
-- `internal/attribute` – embedded YAML rule pack (`rules/*.yaml`) + matcher → findings.
-- `internal/sources/locations` – resolves `{VAR}` folders (env, `go env -w` file, `.npmrc`); never runs tools.
+- `internal/attribute` – embedded YAML rule pack + matcher → findings. Windows rules are
+  `rules/*.yaml` (paths with `\\`); macOS rules are `rules/macos/*.yaml` (paths with `/`), chosen by
+  `runtime.GOOS`. The macOS pack is explain-only: a test forbids `fileAction`, `run` and `settings` in it.
+- `internal/sources/locations` – resolves `{VAR}` folders per OS (Windows: USERPROFILE, LOCALAPPDATA…;
+  macOS: HOME, LIBRARY, CACHES, APPSUPPORT…; plus env, `go env -w` file, `.npmrc`); never runs tools.
 - `internal/sources/registry` – installed programs from the Uninstall keys, **read-only**.
 - `internal/store` – SQLite history (`%LOCALAPPDATA%\CystaDyska\history.db`, modernc, pure Go):
   snapshots, settings, action log; stepwise `migrations` (never edit a shipped one, append).
@@ -75,6 +81,11 @@ go run ./cmd/cysta-scan -fast 'C:\'          # "Full scan" (MFT) through the UAC
   the walker cannot read, so snapshots carry a `method` (`walk`/`mft`) and are only listed,
   compared and pruned within the same method. Its speed is bound by MFT read throughput
   (~540 MB/s on the dev NVMe, buffered or not); parsing and tree building take ~1 s.
+- Off Windows the app is read-only: `App.windowsOnly()` makes `PlanAction`, `RunAction` and
+  `StartFastScan` fail and `Culprits` offer no actions. `internal/scan/readdir_darwin.go` measures
+  `st_blocks*512` and keys hardlinks by device+inode (`hardlinkID`). Reveal uses `open -R`.
+  Don't lift these restrictions without testing on a real Mac and a macOS Guard (`/System`,
+  `/Library`, `/Applications`, `~/Library`, APFS case-insensitivity).
 - Actions still "running" at startup are marked "interrupted" (single-instance lock makes that safe).
 - The uninstaller deletes only the files it installed (never `RMDir /r $INSTDIR`) and keeps the
   user's history in `%LOCALAPPDATA%\CystaDyska`.
@@ -108,3 +119,5 @@ go run ./cmd/cysta-scan -fast 'C:\'          # "Full scan" (MFT) through the UAC
 Milestones M1–M6 are done (scan, on-disk sizes, attribution, history/treemap, confirmed actions,
 MFT fast scan, crash recovery, per-user installer, optional signing). Code signing is prepared but
 unused: the release is unsigned until a certificate is chosen. Version is set in `wails.json`.
+M7 (macOS scan + explain) is code-complete but unverified on a Mac; no dmg, signing or notarization.
+`TestScanSkipsAccessDeniedFolder` (internal/scan) fails on the dev machine at HEAD, unrelated to M7.

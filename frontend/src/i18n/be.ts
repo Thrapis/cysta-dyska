@@ -55,6 +55,7 @@ export const be: Messages = {
   copied: 'Скапіявана',
   copyTitle: 'Скапіюйце каманду, каб выканаць яе самастойна',
   reveal: 'Паказаць у Правадніку',
+  revealMac: 'Паказаць у Finder',
   openSettings: 'Адкрыць Параметры',
   allRisks: 'Усе',
 

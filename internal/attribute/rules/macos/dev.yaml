@@ -1,0 +1,155 @@
+# Developer tools on macOS. Explain-only: commands are shown for the user to
+# copy and run; the app runs nothing.
+version: 1
+rules:
+  - id: mac-xcode-derived-data
+    owner: Xcode
+    category: build-output
+    risk: safe
+    paths: ["{LIBRARY}/Developer/Xcode/DerivedData"]
+    explain:
+      en: "Xcode build products and indexes. Xcode rebuilds them when you build a project again."
+      be: "Вынікі зборкі і індэксы Xcode. Xcode стварае іх нанова, калі вы зноў збіраеце праект."
+
+  - id: mac-xcode-archives
+    owner: Xcode
+    category: build-output
+    risk: review
+    paths: ["{LIBRARY}/Developer/Xcode/Archives"]
+    explain:
+      en: "App archives made with Product > Archive. You may need them to symbolicate crash reports of released versions."
+      be: "Архівы праграм, створаныя праз Product > Archive. Яны могуць спатрэбіцца для расшыфроўкі справаздач пра збоі выпушчаных версій."
+
+  - id: mac-xcode-device-support
+    owner: Xcode
+    category: dev-cache
+    risk: safe
+    paths: ["{LIBRARY}/Developer/Xcode/iOS DeviceSupport"]
+    explain:
+      en: "Debug symbols Xcode copied from iPhones and iPads you connected. They are copied again on the next connection."
+      be: "Сімвалы адладкі, якія Xcode скапіяваў з падключаных iPhone і iPad. Яны капіююцца зноў пры наступным падключэнні."
+
+  - id: mac-simulators
+    owner: Xcode Simulator
+    category: vm-disk
+    risk: review
+    paths: ["{LIBRARY}/Developer/CoreSimulator/Devices"]
+    explain:
+      en: "Simulated iPhones, iPads and their apps and data."
+      be: "Мадэляваныя iPhone, iPad і іх праграмы з данымі."
+    suggest:
+      - text:
+          en: "Remove simulators for unavailable runtimes:"
+          be: "Выдаліце сімулятары для недаступных асяроддзяў:"
+        command: "xcrun simctl delete unavailable"
+
+  - id: mac-homebrew-cache
+    owner: Homebrew
+    category: dev-cache
+    risk: safe
+    paths: ["{CACHES}/Homebrew"]
+    explain:
+      en: "Downloaded installers and bottles. Homebrew downloads them again when needed."
+      be: "Спампаваныя ўсталёўшчыкі і пакункі. Homebrew спампуе іх зноў, калі спатрэбіцца."
+    suggest:
+      - text: {en: "Clear it with Homebrew's own command.", be: "Ачысціце яго ўласнай камандай Homebrew."}
+        command: "brew cleanup -s"
+
+  - id: mac-docker-desktop
+    owner: Docker Desktop
+    category: vm-disk
+    risk: review
+    paths: ["{LIBRARY}/Containers/com.docker.docker/Data/vms"]
+    explain:
+      en: "Docker Desktop's virtual disk with all images, containers and volumes."
+      be: "Віртуальны дыск Docker Desktop з усімі вобразамі, кантэйнерамі і томамі."
+    suggest:
+      - text: {en: "Remove unused images and containers with Docker's own command.", be: "Выдаліце нявыкарыстаныя вобразы і кантэйнеры ўласнай камандай Docker."}
+        command: "docker system prune"
+
+  - id: go-build-cache
+    owner: Go
+    category: dev-cache
+    risk: safe
+    paths: ["{GOCACHE}"]
+    explain:
+      en: "Go's build cache. It speeds up builds and grows without limit; Go rebuilds what it needs."
+      be: "Кэш зборкі Go. Ён паскарае зборку і расце без абмежаванняў; Go аднавіць патрэбнае сам."
+    suggest:
+      - text: {en: "Clear it with Go's own command.", be: "Ачысціце яго ўласнай камандай Go."}
+        command: "go clean -cache"
+
+  - id: go-mod-cache
+    owner: Go
+    category: dev-cache
+    risk: safe
+    paths: ["{GOMODCACHE}"]
+    explain:
+      en: "Downloaded Go modules for every version you ever used. Go downloads them again when needed."
+      be: "Спампаваныя модулі Go для ўсіх версій, якімі вы карысталіся. Go спампуе іх зноў, калі спатрэбіцца."
+    suggest:
+      - text: {en: "Clear it with Go's own command.", be: "Ачысціце яго ўласнай камандай Go."}
+        command: "go clean -modcache"
+
+  - id: npm-cache
+    owner: npm
+    category: dev-cache
+    risk: safe
+    paths: ["{NPM_CACHE}"]
+    explain:
+      en: "npm's download cache. npm downloads packages again when needed."
+      be: "Кэш спампоўвання npm. npm спампуе пакеты зноў, калі спатрэбіцца."
+    suggest:
+      - text: {en: "Clear it with npm's own command.", be: "Ачысціце яго ўласнай камандай npm."}
+        command: "npm cache clean --force"
+
+  - id: pip-cache
+    owner: pip
+    category: dev-cache
+    risk: safe
+    paths: ["{PIP_CACHE}"]
+    explain:
+      en: "pip's download and wheel cache. pip downloads packages again when needed."
+      be: "Кэш спампоўвання і wheel-пакетаў pip. pip спампуе пакеты зноў, калі спатрэбіцца."
+    suggest:
+      - text: {en: "Clear it with pip's own command.", be: "Ачысціце яго ўласнай камандай pip."}
+        command: "pip cache purge"
+
+  - id: cargo-home
+    owner: Rust (Cargo)
+    category: dev-cache
+    risk: review
+    paths: ["{CARGO_HOME}/registry", "{CARGO_HOME}/git"]
+    explain:
+      en: "Downloaded crates and git sources. Cargo downloads them again when a build needs them."
+      be: "Спампаваныя крэйты і git-крыніцы. Cargo спампуе іх зноў, калі іх патрабуе зборка."
+
+  - id: gradle-caches
+    owner: Gradle
+    category: dev-cache
+    risk: safe
+    paths: ["{GRADLE_HOME}/caches"]
+    explain:
+      en: "Gradle's dependency and build caches. Gradle downloads and rebuilds them when needed."
+      be: "Кэш залежнасцей і зборкі Gradle. Gradle спампоўвае і будуе іх нанова, калі трэба."
+
+  - id: node-modules
+    owner: JavaScript projects
+    category: build-output
+    risk: safe
+    names: [{name: node_modules, siblings: ["package.json"]}]
+    explain:
+      en: "Installed dependencies of a JavaScript project. They are reinstalled from package.json."
+      be: "Усталяваныя залежнасці JavaScript-праекта. Іх можна ўсталяваць зноў з package.json."
+
+  - id: rust-target
+    owner: Rust projects
+    category: build-output
+    risk: safe
+    names: [{name: target, siblings: ["Cargo.toml"]}]
+    explain:
+      en: "Rust build output. It can grow to many gigabytes per project."
+      be: "Вынік зборкі Rust. На адзін праект ён можа займаць шмат гігабайтаў."
+    suggest:
+      - text: {en: "Run in the project folder:", be: "Выканайце ў папцы праекта:"}
+        command: "cargo clean"

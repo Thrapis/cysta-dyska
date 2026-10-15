@@ -160,6 +160,9 @@ func newPlanID() string {
 // PlanAction prepares an action and measures what it would affect. Nothing
 // is changed until RunAction.
 func (a *App) PlanAction(req ActionRequest) (PlanDTO, error) {
+	if err := a.windowsOnly(); err != nil {
+		return PlanDTO{}, err
+	}
 	a.mu.Lock()
 	var f *attribute.Finding
 	for i := range a.findings {
@@ -259,6 +262,9 @@ func (a *App) measureTargets(p *plan, path string, vars map[string]string) error
 
 // RunAction carries out a planned action after checking everything again.
 func (a *App) RunAction(planID string, acknowledged bool) (ActionResultDTO, error) {
+	if err := a.windowsOnly(); err != nil {
+		return ActionResultDTO{}, err
+	}
 	if !a.actionMu.TryLock() {
 		return ActionResultDTO{}, errors.New("another action is still running")
 	}

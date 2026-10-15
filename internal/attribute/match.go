@@ -51,7 +51,13 @@ func Match(tree *scan.Node, pack *Pack, vars locations.Vars, apps []registry.App
 // appAreas are folders where programs keep their own files. A folder that
 // looks like project output there (node_modules, bin, ...) belongs to a
 // program, and deleting it would break that program.
-var appAreas = []string{"LOCALAPPDATA", "APPDATA", "PROGRAMDATA", "PROGRAMFILES", "PROGRAMFILESX86", "SYSTEMROOT"}
+var appAreas = []string{
+	"LOCALAPPDATA", "APPDATA", "PROGRAMDATA", "PROGRAMFILES", "PROGRAMFILESX86", "SYSTEMROOT", // Windows
+	"LIBRARY", "APPLICATIONS", // macOS
+}
+
+// homeVars name the user's home folder: Windows, then macOS.
+var homeVars = []string{"USERPROFILE", "HOME"}
 
 type matcher struct {
 	tree   *scan.Node
@@ -94,14 +100,15 @@ func expand(pattern string, vars locations.Vars) (string, bool) {
 // may contain wildcards. Matching is case-insensitive.
 func (m *matcher) glob(pattern string) []*scan.Node {
 	rel, err := filepath.Rel(m.tree.Path(), pattern)
-	if err != nil || rel == ".." || strings.HasPrefix(rel, `..\`) {
+	sep := string(filepath.Separator)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+sep) {
 		return nil // outside the scanned folder
 	}
 	nodes := []*scan.Node{m.tree}
 	if rel == "." {
 		return nodes
 	}
-	for _, seg := range strings.Split(rel, `\`) {
+	for _, seg := range strings.Split(rel, sep) {
 		seg = strings.ToLower(seg)
 		var next []*scan.Node
 		for _, n := range nodes {
@@ -147,11 +154,13 @@ func (m *matcher) matchNames(pack *Pack, vars locations.Vars) {
 	}
 	// Tools also keep their files in dot-folders of the home folder, e.g.
 	// editor extensions in ~\.vscode\extensions.
-	if home := vars["USERPROFILE"]; home != "" {
-		if n := m.tree.Find(home); n != nil {
-			for _, c := range n.Children {
-				if strings.HasPrefix(c.Name, ".") {
-					skip[c] = true
+	for _, hv := range homeVars {
+		if home := vars[hv]; home != "" {
+			if n := m.tree.Find(home); n != nil {
+				for _, c := range n.Children {
+					if strings.HasPrefix(c.Name, ".") {
+						skip[c] = true
+					}
 				}
 			}
 		}

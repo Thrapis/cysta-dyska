@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useI18n, type MessageKey } from '@/i18n'
+import { usePlatform } from '@/lib/platform'
 import { formatBytes } from '@/lib/format'
 import { cn } from 'cn'
 import { ActionDialog } from './ActionDialog'
@@ -174,6 +175,7 @@ function GroupCard({ group }: { group: Group }) {
 
 function LocationRow({ item }: { item: app.CulpritDTO }) {
   const { t, locale } = useI18n()
+  const revealLabel = t(usePlatform() === 'darwin' ? 'revealMac' : 'reveal')
   const [open, setOpen] = useState(false)
   const [handled, setHandled] = useState<app.ActionResultDTO | null>(null)
 
@@ -198,8 +200,8 @@ function LocationRow({ item }: { item: app.CulpritDTO }) {
       <Button
         size="icon-sm"
         variant="ghost"
-        title={t('reveal')}
-        aria-label={t('reveal')}
+        title={revealLabel}
+        aria-label={revealLabel}
         onClick={() => void Reveal(item.path)}
       >
         <FolderSearch />
