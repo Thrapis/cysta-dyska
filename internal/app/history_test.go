@@ -7,6 +7,7 @@ import (
 
 	"cysta-dyska/internal/scan"
 	"cysta-dyska/internal/store"
+	"cysta-dyska/internal/testutil"
 )
 
 func newHistoryApp(t *testing.T) (*App, *fakeEmitter) {
@@ -138,6 +139,7 @@ func TestTreemap(t *testing.T) {
 // the same method as the scan on screen, so switching between full and
 // normal scans never shows fake growth.
 func TestHistoryKeepsScanMethodsApart(t *testing.T) {
+	testutil.RequireWindows(t)
 	a, em := newHistoryApp(t)
 	root := t.TempDir()
 	writeFiles(t, root, map[string]int{"a/blob.bin": 100_000})

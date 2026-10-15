@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"cysta-dyska/internal/sources/registry"
+	"cysta-dyska/internal/testutil"
 )
 
 // newTestApp returns an App whose environment and installed-app list point
@@ -40,6 +41,7 @@ func writeFiles(t *testing.T, root string, files map[string]int) {
 // Proves: after a scan, Culprits lists rule findings with both locales,
 // suggestions, and totals; {owner} in template texts is filled in.
 func TestCulpritsAfterScan(t *testing.T) {
+	testutil.RequireWindows(t)
 	root := t.TempDir()
 	writeFiles(t, root, map[string]int{
 		"home/AppData/Local/npm-cache/_cacache/blob": 200_000,
@@ -96,6 +98,7 @@ func TestCulpritsBeforeScan(t *testing.T) {
 
 // Proves: a registry failure does not lose the rule-based findings.
 func TestCulpritsSurviveRegistryError(t *testing.T) {
+	testutil.RequireWindows(t)
 	root := t.TempDir()
 	writeFiles(t, root, map[string]int{"home/AppData/Local/npm-cache/x": 100_000})
 	a, em := newTestApp(root, nil)

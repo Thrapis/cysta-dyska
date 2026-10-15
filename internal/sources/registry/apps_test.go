@@ -3,12 +3,15 @@ package registry
 import (
 	"runtime"
 	"testing"
+
+	"cysta-dyska/internal/testutil"
 )
 
 // Proves: install folders are cleaned up from the messy forms found in the
 // wild (quotes, trailing slashes, icon paths with ",0" suffixes), and
 // folders that would wrongly claim huge shared areas are rejected.
 func TestInstallDir(t *testing.T) {
+	testutil.RequireWindows(t)
 	cases := []struct {
 		name, location, icon, want string
 	}{

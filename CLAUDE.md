@@ -96,6 +96,8 @@ go run ./cmd/cysta-scan -fast 'C:\'          # "Full scan" (MFT) through the UAC
 
 - New behaviour starts with a test; bug fixes start with a failing test. Each test has a
   `// Proves:` comment. For safety checks, verify the test fails when the check is removed.
+- Tests that use Windows paths, env vars or the Windows rule pack start with
+  `testutil.RequireWindows(t)` (`internal/testutil`) so `go test ./...` also passes on macOS CI.
 - DTO slices sent to the frontend must be non-nil (`[]`, never JSON `null`) — a null list once
   crashed the UI into a black window. `append([]T(nil), empty...)` is nil too. Each view is also
   wrapped in an `ErrorBoundary`.

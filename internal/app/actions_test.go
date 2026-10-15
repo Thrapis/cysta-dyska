@@ -13,6 +13,7 @@ import (
 	"cysta-dyska/internal/actions"
 	"cysta-dyska/internal/sources/registry"
 	"cysta-dyska/internal/store"
+	"cysta-dyska/internal/testutil"
 )
 
 // fakeExec records what the app asked to run instead of touching the real
@@ -90,6 +91,7 @@ func hasAction(c CulpritDTO, kind string) (ActionOptionDTO, bool) {
 // owner's command, Recycle Bin for opted-in rules, uninstall for programs,
 // and permanent delete only after the user turns it on.
 func TestActionOptions(t *testing.T) {
+	testutil.RequireWindows(t)
 	apps := []registry.App{{Name: "Widgetry", UninstallString: `"C:\Program Files\Widgetry\unins000.exe"`}}
 	a, em, _, root := newActionApp(t, apps)
 	a.installedApps = func() ([]registry.App, error) {
@@ -138,6 +140,7 @@ func TestActionOptions(t *testing.T) {
 // "actions" list on findings without actions (e.g. Android emulator disks)
 // crashed the Culprits view into a black window after a drive scan.
 func TestActionListsAreNeverNull(t *testing.T) {
+	testutil.RequireWindows(t)
 	a, em, _, root := newActionApp(t, nil)
 	writeFiles(t, root, map[string]int{
 		"home/.android/avd/pixel.avd/disk.img":    100_000, // android-avd: no actions
@@ -173,6 +176,7 @@ func TestActionListsAreNeverNull(t *testing.T) {
 // Proves: a "check first" action does nothing without the acknowledgement;
 // with it, the files are recycled and the action is logged with sizes.
 func TestRecycleNeedsAckAndIsLogged(t *testing.T) {
+	testutil.RequireWindows(t)
 	a, em, fx, root := newActionApp(t, []registry.App{{Name: "Widgetry"}})
 	writeFiles(t, root, map[string]int{"home/AppData/Roaming/Widgetry/state.db": 100_000})
 	scanAndWait(t, a, em, root)
@@ -216,6 +220,7 @@ func TestRecycleNeedsAckAndIsLogged(t *testing.T) {
 // Proves: everything is checked again when Run is pressed: a junction that
 // appeared after planning blocks the action.
 func TestRunRechecksTargets(t *testing.T) {
+	testutil.RequireWindows(t)
 	a, em, fx, root := newActionApp(t, []registry.App{{Name: "Widgetry"}})
 	writeFiles(t, root, map[string]int{"home/AppData/Roaming/Widgetry/state.db": 100_000, "elsewhere/keep.txt": 10})
 	scanAndWait(t, a, em, root)
@@ -242,6 +247,7 @@ func TestRunRechecksTargets(t *testing.T) {
 // Proves: owner commands run the rule's exact program and arguments; admin
 // ones go through elevation; a failing exit code is logged as failed.
 func TestCommandActions(t *testing.T) {
+	testutil.RequireWindows(t)
 	a, em, fx, root := newActionApp(t, nil)
 	writeFiles(t, root, map[string]int{"home/AppData/Local/npm-cache/_cacache/x": 100_000})
 	scanAndWait(t, a, em, root)
@@ -285,6 +291,7 @@ func TestCommandActions(t *testing.T) {
 // Proves: permanent delete is refused while the setting is off, and works
 // (for real, on a temp folder) once it is on.
 func TestPermanentDelete(t *testing.T) {
+	testutil.RequireWindows(t)
 	a, em, _, root := newActionApp(t, []registry.App{{Name: "Widgetry"}})
 	writeFiles(t, root, map[string]int{"home/AppData/Roaming/Widgetry/state.db": 100_000})
 	scanAndWait(t, a, em, root)
@@ -318,6 +325,7 @@ func TestPermanentDelete(t *testing.T) {
 
 // Proves: unknown findings and kinds the rule does not allow are refused.
 func TestPlanRefusals(t *testing.T) {
+	testutil.RequireWindows(t)
 	a, em, _, root := newActionApp(t, nil)
 	writeFiles(t, root, map[string]int{"home/AppData/Local/npm-cache/_cacache/x": 100_000})
 	scanAndWait(t, a, em, root)

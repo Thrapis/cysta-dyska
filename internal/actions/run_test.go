@@ -7,11 +7,14 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"cysta-dyska/internal/testutil"
 )
 
 // Proves: permanent delete removes folders with read-only files, and does
 // not reach through a junction into the folder it points at.
 func TestRemove(t *testing.T) {
+	testutil.RequireWindows(t)
 	root := t.TempDir()
 	write(t, root, map[string]int{"t/a.bin": 10, "t/s/b.bin": 10, "keep/k.bin": 10})
 	ro := filepath.Join(root, "t", "a.bin")
@@ -37,6 +40,7 @@ func TestRemove(t *testing.T) {
 // earlier on PATH can never be elevated; programs found in the current
 // directory are refused.
 func TestResolveProgram(t *testing.T) {
+	testutil.RequireWindows(t)
 	sys := os.Getenv("SystemRoot")
 	if p, err := ResolveProgram("whoami", true, sys); err != nil || !strings.EqualFold(filepath.Dir(p), filepath.Join(sys, "System32")) {
 		t.Errorf("whoami = %q, %v", p, err)
@@ -73,6 +77,7 @@ func TestResolveProgram(t *testing.T) {
 // Proves: commands run without a shell, report output and exit code, and
 // get no input (so an interactive prompt cannot hang the app).
 func TestRunCommand(t *testing.T) {
+	testutil.RequireWindows(t)
 	whoami, err := ResolveProgram("whoami", false, os.Getenv("SystemRoot"))
 	if err != nil {
 		t.Fatal(err)

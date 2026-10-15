@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"cysta-dyska/internal/sources/locations"
+	"cysta-dyska/internal/testutil"
 )
 
 func testVars() locations.Vars {
@@ -24,6 +25,7 @@ func testVars() locations.Vars {
 // would hurt Windows, programs, other users or whole user folders, and
 // allowed for ordinary caches and project folders.
 func TestGuard(t *testing.T) {
+	testutil.RequireWindows(t)
 	g := NewGuard(testVars())
 	refused := []string{
 		``, `relative\path`, `C:\`, `E:\`, `E:\Codebase`,

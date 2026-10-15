@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"cysta-dyska/internal/scan"
+	"cysta-dyska/internal/testutil"
 )
 
 func openTest(t *testing.T) *Store {
@@ -74,6 +75,7 @@ func upper(s string) string {
 // Proves: Compare lists one folder level from both snapshots, with grown,
 // shrunk, new and removed entries, and marks entries that have children.
 func TestCompareChildren(t *testing.T) {
+	testutil.RequireWindows(t)
 	s := openTest(t)
 	root := t.TempDir()
 	write := func(name string, n int) {
@@ -131,6 +133,7 @@ func TestCompareChildren(t *testing.T) {
 // Proves: Hotspots names where growth actually happened (the deepest
 // folder that holds most of it), not every parent above it.
 func TestHotspots(t *testing.T) {
+	testutil.RequireWindows(t)
 	s := openTest(t)
 	root := t.TempDir()
 	p := filepath.Join(root, "users", "me", "cache", "blob.bin")
