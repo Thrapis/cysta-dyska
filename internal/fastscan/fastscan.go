@@ -13,6 +13,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -227,10 +228,33 @@ func runTimed(ctx context.Context, dir, drive string, launch launcher) (*scan.No
 // removeStale deletes result files left by earlier runs. Only names the
 // helper writes are touched.
 func removeStale(dir string) {
-	entries, _ := os.ReadDir(dir)
+	clearResults(dir)
+}
+
+// ClearResults deletes leftover result files from the result folder.
+func ClearResults() error {
+	dir, err := ResultDir()
+	if err != nil {
+		return err
+	}
+	return clearResults(dir)
+}
+
+func clearResults(dir string) error {
+	entries, err := os.ReadDir(dir)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	var first error
 	for _, e := range entries {
 		if e.Type().IsRegular() && resultRe.MatchString(e.Name()) {
-			os.Remove(filepath.Join(dir, e.Name()))
+			if err := os.Remove(filepath.Join(dir, e.Name())); err != nil && first == nil {
+				first = err
+			}
 		}
 	}
+	return first
 }

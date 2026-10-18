@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"cysta-dyska/internal/attribute"
+	"cysta-dyska/internal/testutil"
 )
 
 func write(t *testing.T, root string, files map[string]int) {
@@ -27,6 +28,7 @@ func write(t *testing.T, root string, files map[string]int) {
 // Proves: "folder" targets the folder itself, "contents" targets what is
 // inside it (so the folder stays), and a file is always itself.
 func TestTargets(t *testing.T) {
+	testutil.RequireWindows(t)
 	root := t.TempDir()
 	write(t, root, map[string]int{"cache/a.bin": 1, "cache/sub/b.bin": 1, "one.bin": 1})
 	cache := filepath.Join(root, "cache")
@@ -55,6 +57,7 @@ func TestTargets(t *testing.T) {
 // Proves: measuring counts bytes and files, and reports junctions inside a
 // target so the action can be refused.
 func TestMeasure(t *testing.T) {
+	testutil.RequireWindows(t)
 	root := t.TempDir()
 	write(t, root, map[string]int{"t/a.bin": 100_000, "t/s/b.bin": 50_000, "real/x.bin": 10})
 	target := filepath.Join(root, "t")

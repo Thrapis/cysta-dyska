@@ -4,10 +4,12 @@ import { Culprits } from '../../../wailsjs/go/app/App'
 import { OpenSettings, Reveal } from '../../../wailsjs/go/main/Shell'
 import type { app, attribute } from '../../../wailsjs/go/models'
 import { ClipboardSetText } from '../../../wailsjs/runtime/runtime'
+import { AppIcon } from '@/components/AppIcon'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useI18n, type MessageKey } from '@/i18n'
+import { usePlatform } from '@/lib/platform'
 import { formatBytes } from '@/lib/format'
 import { cn } from 'cn'
 import { ActionDialog } from './ActionDialog'
@@ -137,6 +139,7 @@ function GroupCard({ group }: { group: Group }) {
     <Card>
       <CardHeader className="gap-1">
         <div className="flex flex-wrap items-center gap-2">
+          <AppIcon owner={first.owner} />
           <CardTitle className="text-base">{first.owner}</CardTitle>
           <Badge variant="outline" className={cn(riskStyle[first.risk as Risk])} title={t(riskHelpKey(first.risk))}>
             {t(riskKey(first.risk))}
@@ -174,6 +177,7 @@ function GroupCard({ group }: { group: Group }) {
 
 function LocationRow({ item }: { item: app.CulpritDTO }) {
   const { t, locale } = useI18n()
+  const revealLabel = t(usePlatform() === 'darwin' ? 'revealMac' : 'reveal')
   const [open, setOpen] = useState(false)
   const [handled, setHandled] = useState<app.ActionResultDTO | null>(null)
 
@@ -198,8 +202,8 @@ function LocationRow({ item }: { item: app.CulpritDTO }) {
       <Button
         size="icon-sm"
         variant="ghost"
-        title={t('reveal')}
-        aria-label={t('reveal')}
+        title={revealLabel}
+        aria-label={revealLabel}
         onClick={() => void Reveal(item.path)}
       >
         <FolderSearch />

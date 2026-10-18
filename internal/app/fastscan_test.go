@@ -6,6 +6,7 @@ import (
 
 	"cysta-dyska/internal/actions"
 	"cysta-dyska/internal/scan"
+	"cysta-dyska/internal/testutil"
 )
 
 func fakeFastTree(t *testing.T) *scan.Node {
@@ -24,6 +25,7 @@ func fakeFastTree(t *testing.T) *scan.Node {
 // helper, and its tree goes through the same path as a normal scan
 // (attribution, then the done event with the root summary).
 func TestFastScan(t *testing.T) {
+	testutil.RequireWindows(t)
 	for _, in := range []string{"C:", `C:\`, "c:"} {
 		em := newFakeEmitter()
 		a := New(em, nil)
@@ -64,6 +66,7 @@ func TestFastScanRejectsFolders(t *testing.T) {
 // Proves: declining the UAC prompt is reported as its own event, not as an
 // error, and the previous scan stays in place.
 func TestFastScanDeclined(t *testing.T) {
+	testutil.RequireWindows(t)
 	em := newFakeEmitter()
 	a := New(em, nil)
 	a.fastScan = func(context.Context, string) (*scan.Node, error) {

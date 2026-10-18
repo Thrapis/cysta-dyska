@@ -4,9 +4,13 @@ import {app} from '../models';
 
 export function ActionLog():Promise<Array<app.ActionLogDTO>>;
 
+export function AppIcons(arg1:Array<string>):Promise<Record<string, string>>;
+
 export function CancelScan():Promise<void>;
 
 export function Children(arg1:string):Promise<Array<app.NodeDTO>>;
+
+export function ClearData():Promise<void>;
 
 export function CompareChildren(arg1:number,arg2:number,arg3:string):Promise<Array<app.DiffRowDTO>>;
 
@@ -17,6 +21,8 @@ export function History():Promise<app.HistoryDTO>;
 export function Hotspots(arg1:number,arg2:number):Promise<Array<app.DiffRowDTO>>;
 
 export function PlanAction(arg1:app.ActionRequest):Promise<app.PlanDTO>;
+
+export function Platform():Promise<string>;
 
 export function RunAction(arg1:string,arg2:boolean):Promise<app.ActionResultDTO>;
 

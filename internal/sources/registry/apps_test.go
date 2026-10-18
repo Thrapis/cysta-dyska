@@ -3,12 +3,15 @@ package registry
 import (
 	"runtime"
 	"testing"
+
+	"cysta-dyska/internal/testutil"
 )
 
 // Proves: install folders are cleaned up from the messy forms found in the
 // wild (quotes, trailing slashes, icon paths with ",0" suffixes), and
 // folders that would wrongly claim huge shared areas are rejected.
 func TestInstallDir(t *testing.T) {
+	testutil.RequireWindows(t)
 	cases := []struct {
 		name, location, icon, want string
 	}{
@@ -29,6 +32,31 @@ func TestInstallDir(t *testing.T) {
 	for _, c := range cases {
 		if got := installDir(c.location, c.icon); got != c.want {
 			t.Errorf("%s: installDir(%q, %q) = %q, want %q", c.name, c.location, c.icon, got, c.want)
+		}
+	}
+}
+
+// Proves: the DisplayIcon forms found in the wild (quotes, ",index" suffix,
+// negative resource ids, bare paths, junk) give the right file and icon index.
+func TestParseIcon(t *testing.T) {
+	cases := []struct {
+		in, path string
+		index    int
+	}{
+		{`C:\Foo\foo.exe`, `C:\Foo\foo.exe`, 0},
+		{`"C:\Foo\foo.exe",0`, `C:\Foo\foo.exe`, 0},
+		{`C:\Foo\foo.exe,3`, `C:\Foo\foo.exe`, 3},
+		{` "C:\Program Files\Foo\foo.exe" , -101 `, `C:\Program Files\Foo\foo.exe`, -101},
+		{`"C:\Foo, Inc\foo.ico"`, `C:\Foo, Inc\foo.ico`, 0},
+		{`C:\Foo, Inc\foo.ico`, `C:\Foo, Inc\foo.ico`, 0},
+		{`C:\Foo\foo.exe,notanumber`, `C:\Foo\foo.exe,notanumber`, 0},
+		{"", "", 0},
+		{`""`, "", 0},
+	}
+	for _, c := range cases {
+		path, index := parseIcon(c.in)
+		if path != c.path || index != c.index {
+			t.Errorf("parseIcon(%q) = %q, %d; want %q, %d", c.in, path, index, c.path, c.index)
 		}
 	}
 }

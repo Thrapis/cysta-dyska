@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 	"testing"
@@ -12,6 +13,7 @@ import (
 	"cysta-dyska/internal/scan"
 	"cysta-dyska/internal/sources/locations"
 	"cysta-dyska/internal/sources/registry"
+	"cysta-dyska/internal/testutil"
 )
 
 // Proves: the rule pack shipped in the binary loads and passes validation
@@ -21,8 +23,12 @@ func TestEmbeddedPackIsValid(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(p.Rules) < 30 {
-		t.Errorf("only %d rules loaded", len(p.Rules))
+	min := 30 // the Windows pack; the macOS pack is smaller
+	if runtime.GOOS == "darwin" {
+		min = 15
+	}
+	if len(p.Rules) < min {
+		t.Errorf("only %d rules loaded, want at least %d", len(p.Rules), min)
 	}
 }
 
@@ -111,6 +117,7 @@ func TestValidationOfActions(t *testing.T) {
 // Proves: the shipped rules never offer file actions on Recycle Bin,
 // Downloads, browser caches or anything Windows owns.
 func TestShippedFileActionsAreConservative(t *testing.T) {
+	testutil.RequireWindows(t)
 	p := mustPack(t)
 	for _, id := range []string{"recycle-bin", "downloads", "chrome-cache", "edge-cache", "firefox-cache",
 		"hiberfil", "pagefile", "winsxs", "windows-installer-cache", "installed-app", "docker-desktop-disk", "wsl-disks"} {
@@ -176,6 +183,7 @@ func mustPack(t *testing.T) *Pack {
 // Proves: path rules with variables and "*" segments find caches,
 // matching folder names case-insensitively.
 func TestMatchPathRules(t *testing.T) {
+	testutil.RequireWindows(t)
 	tree, vars := fixture(t, map[string]int{
 		"home/go/pkg/mod/github.com/x/y.go":                                 50_000,
 		"home/AppData/Local/go-build/aa/bb":                                 40_000,
@@ -199,6 +207,7 @@ func TestMatchPathRules(t *testing.T) {
 // Proves: name rules need their sibling marker, and nested matches inside
 // an already matched folder are not reported again.
 func TestMatchNameRules(t *testing.T) {
+	testutil.RequireWindows(t)
 	tree, vars := fixture(t, map[string]int{
 		"code/web/package.json":                           100,
 		"code/web/node_modules/a/index.js":                30_000,
@@ -231,6 +240,7 @@ func TestMatchNameRules(t *testing.T) {
 // findings as "safe to clean". A node_modules inside VS Code's install
 // folder is part of the program; deleting it would break VS Code.
 func TestNameRulesSkipProgramAndAppAreas(t *testing.T) {
+	testutil.RequireWindows(t)
 	tree, vars := fixture(t, map[string]int{
 		// inside an installed program (outside the app areas, e.g. D:\Tools)
 		"tools/Editor/package.json":            100,
@@ -272,6 +282,7 @@ func TestNameRulesSkipProgramAndAppAreas(t *testing.T) {
 // Proves: nested findings are listed separately and subtracted from the
 // outer finding, so the totals never count a byte twice.
 func TestMatchSubtractsNestedFindings(t *testing.T) {
+	testutil.RequireWindows(t)
 	tree, vars := fixture(t, map[string]int{
 		"home/AppData/Local/Packages/SomeApp/LocalState/db":              100_000,
 		"home/AppData/Local/Packages/MSTeams_8wekyb3d8bbwe/LocalCache/c": 300_000,
@@ -295,6 +306,7 @@ func TestMatchSubtractsNestedFindings(t *testing.T) {
 // folders in AppData are found by app or publisher name, but not for
 // Microsoft and not when the name is too short to be meaningful.
 func TestMatchInstalledApps(t *testing.T) {
+	testutil.RequireWindows(t)
 	tree, vars := fixture(t, map[string]int{
 		"Program Files/Foo Editor/foo.exe":        80_000,
 		"home/AppData/Roaming/FooEditor/settings": 20_000,
@@ -332,6 +344,7 @@ func TestMatchInstalledApps(t *testing.T) {
 // Proves: a rule wins over the installed-app heuristic on the same folder,
 // and an empty readable folder produces no finding.
 func TestMatchPrecedenceAndEmpty(t *testing.T) {
+	testutil.RequireWindows(t)
 	tree, vars := fixture(t, map[string]int{
 		"home/AppData/Local/npm-cache/_cacache/x": 10_000,
 	})
@@ -352,6 +365,7 @@ func TestMatchPrecedenceAndEmpty(t *testing.T) {
 // Proves: rules referencing variables that are unknown on this machine are
 // skipped instead of matching a wrong relative path.
 func TestExpandFailsOnMissingVariable(t *testing.T) {
+	testutil.RequireWindows(t)
 	if _, ok := expand(`{GOCACHE}\x`, locations.Vars{}); ok {
 		t.Error("expand succeeded without GOCACHE")
 	}

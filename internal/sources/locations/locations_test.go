@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"cysta-dyska/internal/testutil"
 )
 
 func fakeEnv(m map[string]string) func(string) string {
@@ -27,6 +29,7 @@ func baseEnv(home string) map[string]string {
 // Proves: with no overrides, every tool location falls back to its
 // documented default, and SystemDrive becomes a usable root ("C:\").
 func TestResolveDefaults(t *testing.T) {
+	testutil.RequireWindows(t)
 	home := t.TempDir()
 	v := Resolve(fakeEnv(baseEnv(home)))
 	local := filepath.Join(home, "AppData", "Local")
@@ -53,6 +56,7 @@ func TestResolveDefaults(t *testing.T) {
 // Proves: environment overrides win over defaults, and only the first
 // GOPATH entry is used.
 func TestResolveEnvOverrides(t *testing.T) {
+	testutil.RequireWindows(t)
 	home := t.TempDir()
 	env := baseEnv(home)
 	env["GOPATH"] = `D:\gopath;E:\other`
@@ -75,6 +79,7 @@ func TestResolveEnvOverrides(t *testing.T) {
 // Proves: settings saved with `go env -w` (the GOENV file) and in .npmrc
 // are honoured, so moved caches are still found without running the tools.
 func TestResolveReadsToolConfigFiles(t *testing.T) {
+	testutil.RequireWindows(t)
 	home := t.TempDir()
 	env := baseEnv(home)
 	goenv := filepath.Join(env["APPDATA"], "go", "env")

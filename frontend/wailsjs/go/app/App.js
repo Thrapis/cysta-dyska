@@ -6,12 +6,20 @@ export function ActionLog() {
   return window['go']['app']['App']['ActionLog']();
 }
 
+export function AppIcons(arg1) {
+  return window['go']['app']['App']['AppIcons'](arg1);
+}
+
 export function CancelScan() {
   return window['go']['app']['App']['CancelScan']();
 }
 
 export function Children(arg1) {
   return window['go']['app']['App']['Children'](arg1);
+}
+
+export function ClearData() {
+  return window['go']['app']['App']['ClearData']();
 }
 
 export function CompareChildren(arg1, arg2, arg3) {
@@ -32,6 +40,10 @@ export function Hotspots(arg1, arg2) {
 
 export function PlanAction(arg1) {
   return window['go']['app']['App']['PlanAction'](arg1);
+}
+
+export function Platform() {
+  return window['go']['app']['App']['Platform']();
 }
 
 export function RunAction(arg1, arg2) {

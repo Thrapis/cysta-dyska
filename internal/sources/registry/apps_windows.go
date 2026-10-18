@@ -89,6 +89,12 @@ func readApp(k registry.Key) (App, bool) {
 		InstallDir:      installDir(str("InstallLocation"), str("DisplayIcon")),
 		EstimatedSize:   int64(num("EstimatedSize")) * 1024, // stored in KiB
 	}
+	// DisplayIcon is often REG_EXPAND_SZ with %variables%.
+	icon := str("DisplayIcon")
+	if exp, err := registry.ExpandString(icon); err == nil {
+		icon = exp
+	}
+	a.IconPath, a.IconIndex = parseIcon(icon)
 	hidden := num("SystemComponent") == 1 || str("ParentKeyName") != "" || str("ReleaseType") != ""
 	return a, a.Name != "" && !hidden
 }

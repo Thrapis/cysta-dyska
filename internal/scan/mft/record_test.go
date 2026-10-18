@@ -7,6 +7,7 @@ import (
 	"unicode/utf16"
 
 	"cysta-dyska/internal/scan"
+	"cysta-dyska/internal/testutil"
 )
 
 const recSize = 1024
@@ -193,6 +194,7 @@ func TestParseDataVariants(t *testing.T) {
 // data really is; their main stream is sparse and empty. Other named streams
 // still do not count.
 func TestWOFCompressedFile(t *testing.T) {
+	testutil.RequireWindows(t)
 	tr := NewTree()
 	tr.Add(parse(t, rec{seq: 5, dir: true}, rootRecord))
 	tr.Add(parse(t, rec{seq: 1, attrs: [][]byte{
@@ -269,6 +271,7 @@ func TestDecodeRuns(t *testing.T) {
 // data to the base file, metadata files and orphans (parent freed or reused)
 // are left out.
 func TestTreeFlat(t *testing.T) {
+	testutil.RequireWindows(t)
 	tr := NewTree()
 	add := func(num uint64, r rec) { tr.Add(parse(t, r, num)) }
 

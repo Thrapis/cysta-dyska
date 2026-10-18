@@ -1,0 +1,60 @@
+# macOS rules. Explain-only: no fileAction and no run blocks, so the app never
+# changes anything on a Mac. Paths use "/" and the macOS variables.
+version: 1
+rules:
+  - id: mac-trash
+    owner: macOS
+    category: temp
+    risk: review
+    paths: ["{HOME}/.Trash"]
+    explain:
+      en: "Your Trash. Files stay here, using space, until you empty it."
+      be: "Ваша Сметніца. Файлы застаюцца тут і займаюць месца, пакуль вы яе не ачысціце."
+    suggest:
+      - text:
+          en: "Look through it in Finder, then choose Finder > Empty Trash."
+          be: "Праглядзіце яе ў Finder, потым абярыце Finder > Ачысціць Сметніцу."
+
+  - id: mac-user-caches
+    owner: macOS apps
+    category: app-cache
+    risk: review
+    paths: ["{CACHES}"]
+    explain:
+      en: "Caches of the programs you use. Most are rebuilt on demand, but some programs get slower for a while after a cache is removed."
+      be: "Кэш праграм, якімі вы карыстаецеся. Большасць аднаўляецца сама, але некаторыя праграмы на нейкі час запавольваюцца пасля выдалення кэшу."
+    suggest:
+      - text:
+          en: "Look at the biggest subfolders first and prefer each program's own option to clear its cache."
+          be: "Спачатку паглядзіце на найбольшыя падпапкі і лепш карыстайцеся ўласнай функцыяй праграмы для ачысткі кэшу."
+
+  - id: mac-ios-backups
+    owner: Finder (iPhone and iPad backups)
+    category: user-files
+    risk: review
+    paths: ["{APPSUPPORT}/MobileSync/Backup"]
+    explain:
+      en: "Local backups of iPhones and iPads. They can be tens of gigabytes each."
+      be: "Лакальныя рэзервовыя копіі iPhone і iPad. Кожная можа займаць дзясяткі гігабайтаў."
+    suggest:
+      - text:
+          en: "Remove old backups in Finder: select the device, then Manage Backups."
+          be: "Выдаліце старыя копіі ў Finder: абярыце прыладу, потым «Кіраваць рэзервовымі копіямі»."
+
+  - id: mac-mail-downloads
+    owner: Mail
+    category: app-data
+    risk: review
+    paths: ["{LIBRARY}/Containers/com.apple.mail/Data/Library/Mail Downloads"]
+    explain:
+      en: "Attachments Mail opened from messages. Copies of the originals stay on the mail server."
+      be: "Далучэнні, якія Mail адкрыў з лістоў. Арыгіналы застаюцца на паштовым серверы."
+
+  - id: mac-diagnostic-reports
+    owner: macOS
+    category: system
+    risk: system
+    paths: ["{LIBRARY}/Logs/DiagnosticReports"]
+    explain:
+      en: "Crash and diagnostic reports written by macOS."
+      be: "Справаздачы пра збоі і дыягностыку, якія запісвае macOS."

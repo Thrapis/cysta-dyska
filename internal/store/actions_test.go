@@ -94,6 +94,39 @@ func TestSettings(t *testing.T) {
 	}
 }
 
+// Proves: ClearHistory removes every snapshot with its entries and the whole
+// action log, but keeps the settings, and the store keeps working afterwards.
+func TestClearHistory(t *testing.T) {
+	s := openTest(t)
+	tree := scanFixture(t, map[string]int{"a/big.bin": 200_000})
+	if _, err := s.Save(tree, time.Second, MethodWalk, testOpts()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.StartAction(ActionRecord{Kind: "recycle", Target: `C:\a`}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SetSetting("allow_permanent_delete", "true"); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := s.ClearHistory(); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, table := range []string{"snapshots", "entries", "actions"} {
+		var n int
+		if err := s.db.QueryRow(`SELECT COUNT(*) FROM ` + table).Scan(&n); err != nil || n != 0 {
+			t.Errorf("%s has %d rows after clearing (err %v)", table, n, err)
+		}
+	}
+	if v, ok, _ := s.Setting("allow_permanent_delete"); !ok || v != "true" {
+		t.Errorf("setting after clearing = %q, %v; settings must be kept", v, ok)
+	}
+	if _, err := s.Save(tree, time.Second, MethodWalk, testOpts()); err != nil {
+		t.Errorf("save after clearing: %v", err)
+	}
+}
+
 // Proves: an action is logged as running before it starts and updated when
 // it ends, so the log shows actions interrupted by a crash; the log lists
 // newest first.

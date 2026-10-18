@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -17,6 +18,7 @@ import (
 	"cysta-dyska/internal/fastscan"
 	"cysta-dyska/internal/scan"
 	"cysta-dyska/internal/sources/locations"
+	"cysta-dyska/internal/sources/icons"
 	"cysta-dyska/internal/sources/registry"
 	"cysta-dyska/internal/store"
 )
@@ -72,12 +74,16 @@ type App struct {
 	// Sources for attribution; replaced in tests.
 	getenv        func(string) string
 	installedApps func() ([]registry.App, error)
+	appIcon       func(path string, index int) (string, error)
 
 	history         *store.Store // nil when the history database could not be opened
 	historyOpts     store.Options
 	hotspotMinDelta int64
 
-	fastScan func(ctx context.Context, drive string) (*scan.Node, error) // replaced in tests
+	fastScan         func(ctx context.Context, drive string) (*scan.Node, error) // replaced in tests
+	clearFastResults func() error                                                // replaced in tests
+
+	goos string // runtime.GOOS; replaced in tests
 
 	exec     executors  // do the actual cleanup work; replaced in tests
 	actionMu sync.Mutex // one action at a time
@@ -98,10 +104,25 @@ type App struct {
 // scans to history, which may be nil.
 func New(emit Emitter, history *store.Store) *App {
 	return &App{
-		emit: emit, getenv: os.Getenv, installedApps: registry.Installed,
+		emit: emit, getenv: os.Getenv, installedApps: registry.Installed, appIcon: icons.DataURI,
 		history: history, historyOpts: store.DefaultOptions, hotspotMinDelta: defaultHotspotMinDelta,
-		exec: defaultExecutors(), fastScan: fastscan.Run,
+		exec: defaultExecutors(), fastScan: fastscan.Run, clearFastResults: fastscan.ClearResults, goos: runtime.GOOS,
 	}
+}
+
+// Platform tells the frontend which OS it runs on ("windows", "darwin").
+func (a *App) Platform() string { return a.goos }
+
+// errWindowsOnly is returned for features that exist only on Windows. On
+// macOS the app explains and measures but never changes anything.
+var errWindowsOnly = errors.New("this is only available on Windows")
+
+// windowsOnly returns errWindowsOnly unless the app runs on Windows.
+func (a *App) windowsOnly() error {
+	if a.goos != "windows" {
+		return errWindowsOnly
+	}
+	return nil
 }
 
 // StartScan begins scanning root in the background. Results arrive as
@@ -118,6 +139,9 @@ var driveRootRe = regexp.MustCompile(`^([A-Za-z]:)\\?$`)
 // table in an elevated helper; Windows shows a UAC prompt first. Results
 // arrive as for StartScan; a declined prompt sends EventDeclined.
 func (a *App) StartFastScan(drive string) error {
+	if err := a.windowsOnly(); err != nil {
+		return err
+	}
 	m := driveRootRe.FindStringSubmatch(drive)
 	if m == nil {
 		return fmt.Errorf("the fast scan works on whole drives, not %q", drive)
