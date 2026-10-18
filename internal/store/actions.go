@@ -83,6 +83,30 @@ func (s *Store) Actions(limit int) ([]ActionRecord, error) {
 	return out, rows.Err()
 }
 
+// ClearHistory deletes all snapshots (their entries go with them) and the
+// whole action log. Settings are kept. The database stays open and in use, so
+// rows are deleted instead of the file.
+func (s *Store) ClearHistory() error {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if _, err := tx.Exec(`DELETE FROM actions`); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`DELETE FROM snapshots`); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	// Give the space back; the clearing itself has already succeeded.
+	s.db.Exec(`PRAGMA wal_checkpoint(TRUNCATE)`)
+	s.db.Exec(`VACUUM`)
+	return nil
+}
+
 // Setting returns a stored setting; ok is false if it was never set.
 func (s *Store) Setting(key string) (value string, ok bool, err error) {
 	err = s.db.QueryRow(`SELECT value FROM settings WHERE key = ?`, key).Scan(&value)

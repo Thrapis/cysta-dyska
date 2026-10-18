@@ -50,6 +50,9 @@ go run ./cmd/cysta-scan -fast 'C:\'          # "Full scan" (MFT) through the UAC
 - `internal/sources/locations` – resolves `{VAR}` folders per OS (Windows: USERPROFILE, LOCALAPPDATA…;
   macOS: HOME, LIBRARY, CACHES, APPSUPPORT…; plus env, `go env -w` file, `.npmrc`); never runs tools.
 - `internal/sources/registry` – installed programs from the Uninstall keys, **read-only**.
+- `internal/sources/icons` – program icon (DisplayIcon file + index) → PNG data URI via
+  `ExtractIconExW`/`GetDIBits`; read-only, cached, Windows only (stub elsewhere). The UI asks for
+  icons by app name through `App.AppIcons` (batched, `frontend/src/components/AppIcon.tsx`).
 - `internal/store` – SQLite history (`%LOCALAPPDATA%\CystaDyska\history.db`, modernc, pure Go):
   snapshots, settings, action log; stepwise `migrations` (never edit a shipped one, append).
 - `internal/treemap` – squarified layout (computed in Go so it is testable).
@@ -86,6 +89,10 @@ go run ./cmd/cysta-scan -fast 'C:\'          # "Full scan" (MFT) through the UAC
   `st_blocks*512` and keys hardlinks by device+inode (`hardlinkID`). Reveal uses `open -R`.
   Don't lift these restrictions without testing on a real Mac and a macOS Guard (`/System`,
   `/Library`, `/Applications`, `~/Library`, APFS case-insensitivity).
+- Settings has the language picker (localStorage) and "Clear app data" (`App.ClearData`): it only
+  deletes history/action-log rows (`Store.ClearHistory`, the open DB file is never deleted) and
+  `mft-<16 hex>.bin` leftovers (`fastscan.ClearResults`); settings are kept; refused while a scan
+  or action runs.
 - Actions still "running" at startup are marked "interrupted" (single-instance lock makes that safe).
 - The uninstaller deletes only the files it installed (never `RMDir /r $INSTDIR`) and keeps the
   user's history in `%LOCALAPPDATA%\CystaDyska`.

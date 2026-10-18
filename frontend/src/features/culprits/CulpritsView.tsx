@@ -4,6 +4,7 @@ import { Culprits } from '../../../wailsjs/go/app/App'
 import { OpenSettings, Reveal } from '../../../wailsjs/go/main/Shell'
 import type { app, attribute } from '../../../wailsjs/go/models'
 import { ClipboardSetText } from '../../../wailsjs/runtime/runtime'
+import { AppIcon } from '@/components/AppIcon'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -138,6 +139,7 @@ function GroupCard({ group }: { group: Group }) {
     <Card>
       <CardHeader className="gap-1">
         <div className="flex flex-wrap items-center gap-2">
+          <AppIcon owner={first.owner} />
           <CardTitle className="text-base">{first.owner}</CardTitle>
           <Badge variant="outline" className={cn(riskStyle[first.risk as Risk])} title={t(riskHelpKey(first.risk))}>
             {t(riskKey(first.risk))}

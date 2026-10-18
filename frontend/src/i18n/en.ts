@@ -143,6 +143,11 @@ export const en = {
   settingDelete: 'Allow permanent delete',
   settingDeleteHelp: 'Adds “Delete permanently” next to “Move to Recycle Bin” for items marked safe or check-first. Deleted files cannot be restored.',
   settingsUnavailable: 'Settings are unavailable because the history database could not be opened.',
+  settingClear: 'Clear app data',
+  settingClearHelp: 'Deletes the scan history, the activity log and leftover Full scan files that Čysta Dyska created. Settings and your own files are not touched.',
+  clearConfirm: 'Delete the history and the activity log? This cannot be undone.',
+  clearing: 'Clearing…',
+  clearDone: 'App data cleared.',
 
   tabActivity: 'Activity',
   activityEmpty: 'Nothing has been done yet.',

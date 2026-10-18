@@ -6,6 +6,7 @@ package registry
 
 import (
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -17,6 +18,23 @@ type App struct {
 	InstallDir      string // "" when unknown or too broad to attribute
 	EstimatedSize   int64  // bytes, as reported by the installer
 	UninstallString string // shown to the user; never executed in v1
+	IconPath        string // file holding the program's icon (from DisplayIcon); "" if none
+	IconIndex       int    // icon index in IconPath; negative values are resource ids
+}
+
+// parseIcon splits a DisplayIcon value such as `"C:\path\app.exe",0` into the
+// file and the icon index. The index is optional.
+func parseIcon(v string) (path string, index int) {
+	v = strings.TrimSpace(v)
+	path = v
+	// The index follows the last comma, and only counts if it is a number
+	// outside any quotes: a comma inside a folder name is part of the path.
+	if i := strings.LastIndexByte(v, ','); i >= 0 && !strings.Contains(v[i:], `"`) {
+		if n, err := strconv.Atoi(strings.TrimSpace(v[i+1:])); err == nil {
+			path, index = v[:i], n
+		}
+	}
+	return strings.Trim(strings.TrimSpace(path), `"`), index
 }
 
 // installDir picks the program's folder from InstallLocation, falling back

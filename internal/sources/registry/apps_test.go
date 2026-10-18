@@ -36,6 +36,31 @@ func TestInstallDir(t *testing.T) {
 	}
 }
 
+// Proves: the DisplayIcon forms found in the wild (quotes, ",index" suffix,
+// negative resource ids, bare paths, junk) give the right file and icon index.
+func TestParseIcon(t *testing.T) {
+	cases := []struct {
+		in, path string
+		index    int
+	}{
+		{`C:\Foo\foo.exe`, `C:\Foo\foo.exe`, 0},
+		{`"C:\Foo\foo.exe",0`, `C:\Foo\foo.exe`, 0},
+		{`C:\Foo\foo.exe,3`, `C:\Foo\foo.exe`, 3},
+		{` "C:\Program Files\Foo\foo.exe" , -101 `, `C:\Program Files\Foo\foo.exe`, -101},
+		{`"C:\Foo, Inc\foo.ico"`, `C:\Foo, Inc\foo.ico`, 0},
+		{`C:\Foo, Inc\foo.ico`, `C:\Foo, Inc\foo.ico`, 0},
+		{`C:\Foo\foo.exe,notanumber`, `C:\Foo\foo.exe,notanumber`, 0},
+		{"", "", 0},
+		{`""`, "", 0},
+	}
+	for _, c := range cases {
+		path, index := parseIcon(c.in)
+		if path != c.path || index != c.index {
+			t.Errorf("parseIcon(%q) = %q, %d; want %q, %d", c.in, path, index, c.path, c.index)
+		}
+	}
+}
+
 // Proves: reading the real registry works on this machine, finds named
 // apps, and never returns duplicates of the same app.
 func TestInstalledReadsRealRegistry(t *testing.T) {

@@ -13,11 +13,11 @@ import { ActivityView } from '@/features/activity/ActivityView'
 import { SettingsButton } from '@/features/settings/SettingsButton'
 import { SizeTree } from '@/features/scan/SizeTree'
 import { useScan, type ScanState } from '@/features/scan/useScan'
-import { locales, useI18n, type Locale } from '@/i18n'
+import { useI18n } from '@/i18n'
 import { formatBytes, formatElapsed } from '@/lib/format'
 
 export default function App() {
-  const { t, locale, setLocale } = useI18n()
+  const { t } = useI18n()
   const { state, start, cancel } = useScan()
   const [folder, setFolder] = useState('')
   // Bumped when settings change, so views that depend on them reload.
@@ -40,20 +40,6 @@ export default function App() {
           <p className="text-sm text-muted-foreground">{t('tagline')}</p>
         </div>
         <SettingsButton onChange={() => setSettingsVersion((v) => v + 1)} />
-        <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          {t('language')}
-          <select
-            className="rounded-md border bg-background px-2 py-1 text-foreground"
-            value={locale}
-            onChange={(e) => setLocale(e.target.value as Locale)}
-          >
-            {(Object.keys(locales) as Locale[]).map((l) => (
-              <option key={l} value={l}>
-                {l.toUpperCase()}
-              </option>
-            ))}
-          </select>
-        </label>
       </header>
 
       <div className="flex flex-wrap items-center gap-2 border-b px-5 py-3">

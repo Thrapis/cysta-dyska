@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ActionLog } from '../../../wailsjs/go/app/App'
 import type { app } from '../../../wailsjs/go/models'
+import { AppIcon } from '@/components/AppIcon'
 import { Badge } from '@/components/ui/badge'
 import { useI18n, type MessageKey } from '@/i18n'
 import { formatBytes } from '@/lib/format'
@@ -31,6 +32,7 @@ export function ActivityView({ refresh }: { refresh: number }) {
       {log.map((e) => (
         <li key={e.id} className="rounded-md border p-3 text-sm">
           <div className="flex flex-wrap items-center gap-2">
+            <AppIcon owner={e.owner} className="size-4" />
             <span className="font-medium">{e.owner}</span>
             <span className="text-muted-foreground">{t(`kind_${e.kind}` as MessageKey)}</span>
             <Badge variant={e.outcome === 'done' ? 'secondary' : e.outcome === 'interrupted' ? 'destructive' : 'outline'}>

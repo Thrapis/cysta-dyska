@@ -55,6 +55,31 @@ func TestResultPathValidation(t *testing.T) {
 	}
 }
 
+// Proves: clearing the result folder removes leftover mft-<16 hex>.bin files
+// and nothing else, and a missing folder is not an error.
+func TestClearResultsKeepsOtherFiles(t *testing.T) {
+	dir := testDir(t)
+	stale := filepath.Join(dir, "mft-0123456789abcdef.bin")
+	other := filepath.Join(dir, "notes.txt")
+	for _, p := range []string{stale, other} {
+		if err := os.WriteFile(p, []byte("x"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := clearResults(dir); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(stale); !os.IsNotExist(err) {
+		t.Error("stale result file was kept")
+	}
+	if _, err := os.Stat(other); err != nil {
+		t.Errorf("unrelated file was touched: %v", err)
+	}
+	if err := clearResults(filepath.Join(dir, "missing")); err != nil {
+		t.Errorf("missing folder: %v", err)
+	}
+}
+
 // Proves: the helper refuses bad arguments without reading any volume or
 // writing any file, and reports a usage error.
 func TestHelperRefusesBadArgs(t *testing.T) {

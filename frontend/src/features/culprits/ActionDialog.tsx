@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import { PlanAction, RunAction } from '../../../wailsjs/go/app/App'
 import type { app } from '../../../wailsjs/go/models'
+import { AppIcon } from '@/components/AppIcon'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
@@ -90,7 +91,10 @@ export function ActionDialog({
     >
       <DialogContent showCloseButton={!busy} className="sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle>{t('actionsTitle', { name })}</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <AppIcon owner={item.owner} />
+            {t('actionsTitle', { name })}
+          </DialogTitle>
           <DialogDescription className="break-all font-mono text-xs">{item.path}</DialogDescription>
         </DialogHeader>
 

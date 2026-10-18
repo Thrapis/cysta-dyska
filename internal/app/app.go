@@ -18,6 +18,7 @@ import (
 	"cysta-dyska/internal/fastscan"
 	"cysta-dyska/internal/scan"
 	"cysta-dyska/internal/sources/locations"
+	"cysta-dyska/internal/sources/icons"
 	"cysta-dyska/internal/sources/registry"
 	"cysta-dyska/internal/store"
 )
@@ -73,12 +74,14 @@ type App struct {
 	// Sources for attribution; replaced in tests.
 	getenv        func(string) string
 	installedApps func() ([]registry.App, error)
+	appIcon       func(path string, index int) (string, error)
 
 	history         *store.Store // nil when the history database could not be opened
 	historyOpts     store.Options
 	hotspotMinDelta int64
 
-	fastScan func(ctx context.Context, drive string) (*scan.Node, error) // replaced in tests
+	fastScan         func(ctx context.Context, drive string) (*scan.Node, error) // replaced in tests
+	clearFastResults func() error                                                // replaced in tests
 
 	goos string // runtime.GOOS; replaced in tests
 
@@ -101,9 +104,9 @@ type App struct {
 // scans to history, which may be nil.
 func New(emit Emitter, history *store.Store) *App {
 	return &App{
-		emit: emit, getenv: os.Getenv, installedApps: registry.Installed,
+		emit: emit, getenv: os.Getenv, installedApps: registry.Installed, appIcon: icons.DataURI,
 		history: history, historyOpts: store.DefaultOptions, hotspotMinDelta: defaultHotspotMinDelta,
-		exec: defaultExecutors(), fastScan: fastscan.Run, goos: runtime.GOOS,
+		exec: defaultExecutors(), fastScan: fastscan.Run, clearFastResults: fastscan.ClearResults, goos: runtime.GOOS,
 	}
 }
 

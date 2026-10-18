@@ -6,12 +6,20 @@ export function ActionLog() {
   return window['go']['app']['App']['ActionLog']();
 }
 
+export function AppIcons(arg1) {
+  return window['go']['app']['App']['AppIcons'](arg1);
+}
+
 export function CancelScan() {
   return window['go']['app']['App']['CancelScan']();
 }
 
 export function Children(arg1) {
   return window['go']['app']['App']['Children'](arg1);
+}
+
+export function ClearData() {
+  return window['go']['app']['App']['ClearData']();
 }
 
 export function CompareChildren(arg1, arg2, arg3) {
