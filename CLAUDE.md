@@ -21,6 +21,7 @@ CYSTA_RECYCLE_TEST=1 go test -run RecycleReal ./internal/actions/   # opt-in: us
 CYSTA_MFT_TEST=1 go test -run MFTMatchesWalker ./internal/scan/mft/  # opt-in, elevated shell: MFT vs walker
 go run ./cmd/cysta-scan -fast 'C:\'          # "Full scan" (MFT) through the UAC helper; prints step timings
 ./scripts/release.ps1 [-Sign]                  # app + per-user NSIS installer in build/bin; -Sign: see scripts/sign.ps1
+go run ./scripts/appicon [-preview <dir>]      # re-render build/appicon.png + build/windows/icon.ico
 ```
 
 - `frontend/dist` is gitignored but embedded by `main.go`; on a fresh clone build the frontend
@@ -60,7 +61,9 @@ go run ./cmd/cysta-scan -fast 'C:\'          # "Full scan" (MFT) through the UAC
 - `internal/app` – the Wails-bound facade; DTOs; plan/run of actions.
 - `internal/guard` – source-level tests enforcing project rules (no registry writes).
 - `scripts/` – `release.ps1` (build + installer, optional signing), `sign.ps1` (signtool, cert from
-  the Windows store by thumbprint; no secrets in the repo).
+  the Windows store by thumbprint; no secrets in the repo). `scripts/appicon` renders the app icon
+  (stdlib-only Go): a flat, unshaded disco ball ("Čysta dyska" = "Pure Disco") with a pie slice pulled out. Edit
+  it rather than the PNG/ICO; `frontend/public/favicon.svg` is a hand-drawn copy of the design.
 - `frontend/src/features/*` – one folder per view (culprits, scan, map, history, activity, settings).
 
 ## Safety invariants (data safety is the top requirement)
